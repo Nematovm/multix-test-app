@@ -1,14 +1,13 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import TestPage from './pages/TestPage';
 
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/test/:id" element={<TestPage />} />
+        <Route path="/test/:testId" element={<TestPage />} />
       </Routes>
     </BrowserRouter>
   );
 }
-
-export default App;
