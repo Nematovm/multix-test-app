@@ -5,8 +5,8 @@ import NotePanel from '../components/NotePanel';
 import './TestPage.css';
 import { useParams } from 'react-router-dom';
 
-const API_BASE      = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-const DASHBOARD_URL = 'http://127.0.0.1:5500/frontend/Pages/dashboard.html';
+const API_BASE      = process.env.REACT_APP_API_URL || 'https://valiant-expression-production-a4f5.up.railway.app';
+const DASHBOARD_URL = 'https://multix-frontend-production.up.railway.app/Pages/dashboard.html';
 
 // ── Barcha to'g'ri/noto'g'ri javoblarni hisoblash (ResultPanel.jsx buildResults bilan bir xil logika) ──
 function calcScore(parts, userAnswers) {
@@ -107,7 +107,7 @@ export default function TestPage() {
     const urlToken  = urlParams.get('token');
     if (urlToken) localStorage.setItem('cp_token', urlToken);
     else if (!localStorage.getItem('cp_token')) {
-      window.location.href = 'http://127.0.0.1:5500/frontend/Pages/auth.html';
+      window.location.href = 'https://multix-frontend-production.up.railway.app/Pages/auth.html';
     }
   }, []);
 
