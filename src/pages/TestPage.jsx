@@ -6,7 +6,7 @@ import './TestPage.css';
 import { useParams } from 'react-router-dom';
 
 const API_BASE      = process.env.REACT_APP_API_URL || 'https://valiant-expression-production-a4f5.up.railway.app';
-const DASHBOARD_URL = 'https://www.multx.uz/Pages/dashboard.html';
+const DASHBOARD_URL = 'https://multx.uz/Pages/dashboard.html';
 
 // ── Barcha to'g'ri/noto'g'ri javoblarni hisoblash (ResultPanel.jsx buildResults bilan bir xil logika) ──
 function calcScore(parts, userAnswers) {
