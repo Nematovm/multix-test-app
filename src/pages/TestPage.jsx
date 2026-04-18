@@ -8,7 +8,7 @@ import { useParams } from 'react-router-dom';
 const API_BASE      = process.env.REACT_APP_API_URL || 'https://valiant-expression-production-a4f5.up.railway.app';
 const DASHBOARD_URL = 'https://multx.uz/Pages/dashboard.html';
 
-// ── Barcha to'g'ri/noto'g'ri javoblarni hisoblash (ResultPanel.jsx buildResults bilan bir xil logika) ──
+// ── Barcha to'g'ri/noto'g'ri javoblarni hisoblash ──
 function calcScore(parts, userAnswers) {
   let correct = 0;
   let total   = 0;
@@ -91,7 +91,7 @@ export default function TestPage() {
   const [answers,         setAnswers]         = useState({});
   const [submitted,       setSubmitted]       = useState(false);
   const [timeLeft,        setTimeLeft]        = useState(0);
-  const [startTime,       setStartTime]       = useState(null);   // vaqt hisoblash uchun
+  const [startTime,       setStartTime]       = useState(null);
   const [started,         setStarted]         = useState(false);
   const [highlights,      setHighlights]      = useState([]);
   const [showNotePanel,   setShowNotePanel]   = useState(false);
@@ -99,9 +99,10 @@ export default function TestPage() {
   const [showToolbar,     setShowToolbar]     = useState(false);
   const [toolbarPos,      setToolbarPos]      = useState({ x: 0, y: 0 });
   const [selectedText,    setSelectedText]    = useState('');
-  const [attemptId,       setAttemptId]       = useState(null);   // saqlangan attempt ID
+  const [attemptId,       setAttemptId]       = useState(null);
   const passageRef = useRef(null);
 
+  // Token URL dan olib localStorage ga saqlash
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken  = urlParams.get('token');
@@ -111,17 +112,32 @@ export default function TestPage() {
     }
   }, []);
 
+  // ── TEST JSON NI YUKLASH ──
+  // Token ni header ga qo'shib yuboramiz — admin endpoint talab qiladi
   useEffect(() => {
     if (!id) return;
     const fetchTestData = async () => {
-      setLoading(true); setError(null);
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch(`${API_BASE}/admin/tests/${id}/json-data`);
-        if (!res.ok) throw new Error(
-          res.status === 404
-            ? 'Test topilmadi yoki JSON fayl yuklanmagan'
-            : `Server xatosi: ${res.status}`
-        );
+        const token = localStorage.getItem('cp_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+        const res = await fetch(`${API_BASE}/admin/tests/${id}/json-data`, { headers });
+
+        if (!res.ok) {
+          // 401/403 bo'lsa — login sahifasiga yo'naltirish
+          if (res.status === 401 || res.status === 403) {
+            window.location.href = 'https://multx.uz/Pages/auth.html';
+            return;
+          }
+          throw new Error(
+            res.status === 404
+              ? 'Test topilmadi yoki JSON fayl yuklanmagan'
+              : `Server xatosi: ${res.status}`
+          );
+        }
+
         const data = await res.json();
         setTestData(data);
         setTimeLeft((data.duration || 20) * 60);
@@ -188,7 +204,7 @@ export default function TestPage() {
 
   const goBack = () => { window.location.href = DASHBOARD_URL; };
 
-  // ── SUBMIT: natijani backend ga yuborish ──
+  // ── SUBMIT ──
   const handleSubmit = useCallback(async (currentAnswers) => {
     const finalAnswers = currentAnswers || answers;
     setSubmitted(true);
@@ -198,11 +214,10 @@ export default function TestPage() {
     const { correct, total } = calcScore(testData.parts, finalAnswers);
     const percent = total > 0 ? Math.round((correct / total) * 100 * 10) / 10 : 0;
 
-    // Sarflangan vaqt (sekund)
     const timeSpent = startTime ? Math.round((Date.now() - startTime) / 1000) : null;
 
     const token = localStorage.getItem('cp_token');
-    if (!token) return; // login qilmagan user — saqlamaymiz
+    if (!token) return;
 
     try {
       const res = await fetch(`${API_BASE}/attempts`, {
