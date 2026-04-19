@@ -7,6 +7,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/test/:testId" element={<TestPage />} />
+        <Route path="/listening/:testId" element={<TestPage />} />
       </Routes>
     </BrowserRouter>
   );
