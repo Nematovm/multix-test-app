@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import './ResultPanel.css';
 
 const API_URL = 'https://valiant-expression-production-a4f5.up.railway.app';
 
-// ── CEFR score jadvali (to'g'ri javoblar soni → ball) ──
 const SCORE_TABLE = {
   1:20,  2:24,  3:27,  4:29,  5:32,  6:34,  7:36,  8:38,  9:39,
   10:41, 11:42, 12:44, 13:45, 14:46, 15:48, 16:49, 17:51, 18:52,
@@ -32,13 +31,10 @@ const getBand = (pct) => {
   return           { band: '4.0', label: 'Limited',        color: '#dc2626' };
 };
 
-// ── Barcha part turlaridan natijalarni yig'uvchi helper ──
 function buildResults(parts, userAnswers) {
   const allResults = [];
 
   parts.forEach(part => {
-
-    // reading-mixed (Part 5)
     if (part.type === 'reading-mixed') {
       (part.question_groups || []).forEach(group => {
         if (group.type === 'fitb') {
@@ -73,7 +69,6 @@ function buildResults(parts, userAnswers) {
       return;
     }
 
-    // reading-mcq (Part 4)
     if (part.type === 'reading-mcq') {
       const groups = part.question_groups || [{ questions: part.questions || [] }];
       groups.forEach(group => {
@@ -93,7 +88,6 @@ function buildResults(parts, userAnswers) {
       return;
     }
 
-    // matching (Part 2)
     if (part.type === 'matching') {
       (part.questions || []).forEach(q => {
         const correct = part.answers?.[q.id] || '';
@@ -110,7 +104,6 @@ function buildResults(parts, userAnswers) {
       return;
     }
 
-    // heading-match (Part 3)
     if (part.type === 'heading-match') {
       (part.paragraphs || []).forEach(para => {
         const correct = part.answers?.[para.id] || '';
@@ -127,7 +120,28 @@ function buildResults(parts, userAnswers) {
       return;
     }
 
-    // FITB (Part 1 va boshqalar)
+    // ── LISTENING MCQ ──
+    if (part.type === 'listening-mcq') {
+      (part.questions || []).forEach(q => {
+        const correct = part.answers?.[q.id] || '';
+        const user    = (userAnswers[q.id] || '').toUpperCase().trim();
+        // explanation object yoki string bo'lishi mumkin
+        const expl    = part.explanations?.[q.id] || '';
+        allResults.push({
+          id: q.id,
+          question_number: q.number,
+          user_answer:    userAnswers[q.id] || '',
+          correct_answer: correct,
+          explanation:    typeof expl === 'object' ? expl.text || '' : expl,
+          audio_url:      typeof expl === 'object' ? expl.audio_url   || null : null,
+          audio_start:    typeof expl === 'object' ? expl.audio_start || 0    : 0,
+          audio_end:      typeof expl === 'object' ? expl.audio_end   || null : null,
+          is_correct:     user === correct.toUpperCase().trim(),
+        });
+      });
+      return;
+    }
+
     if (!part.answers) return;
     Object.entries(part.answers).forEach(([id, correct]) => {
       const user        = (userAnswers[id] || '').toLowerCase().trim();
@@ -146,7 +160,66 @@ function buildResults(parts, userAnswers) {
   return allResults;
 }
 
-export default function ResultPanel({ parts, userAnswers, isFullMock }) {
+// ── Explanation Audio Player (kichik) ──
+function ExplAudioPlayer({ audioUrl, startTime = 0, endTime = null }) {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [current, setCurrent] = useState(startTime);
+
+  const fmt = (s) => {
+    const m = Math.floor(s / 60);
+    return `${m}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+  };
+
+  const toggle = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+    } else {
+      audio.currentTime = startTime;
+      audio.play().catch(() => {});
+      setPlaying(true);
+    }
+  };
+
+  return (
+    <div className="rp-expl-audio">
+      <audio
+        ref={audioRef}
+        src={audioUrl}
+        onTimeUpdate={e => {
+          const t = e.target.currentTime;
+          setCurrent(t);
+          if (endTime && t >= endTime) {
+            e.target.pause();
+            setPlaying(false);
+          }
+        }}
+        onEnded={() => setPlaying(false)}
+      />
+      <button className="rp-expl-audio-btn" onClick={toggle}>
+        {playing ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="4" width="4" height="16" rx="1"/>
+            <rect x="14" y="4" width="4" height="16" rx="1"/>
+          </svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5,3 19,12 5,21"/>
+          </svg>
+        )}
+      </button>
+      <span className="rp-expl-audio-time">
+        {fmt(current)} {endTime ? `/ ${fmt(endTime)}` : ''}
+      </span>
+      <span className="rp-expl-audio-label">Audio explanation</span>
+    </div>
+  );
+}
+
+export default function ResultPanel({ parts, userAnswers, isFullMock, isListening }) {
   const [showCorrect,   setShowCorrect]   = useState(false);
   const [showExpl,      setShowExpl]      = useState(false);
   const [feedback,      setFeedback]      = useState('');
@@ -164,7 +237,6 @@ export default function ResultPanel({ parts, userAnswers, isFullMock }) {
   const circ    = 2 * Math.PI * 40;
   const dashOff = circ * (1 - percent / 100);
 
-  // CEFR — faqat full mock uchun
   const cefr = isFullMock ? getCEFR(score) : null;
 
   const handleFeedback = async () => {
@@ -233,8 +305,6 @@ export default function ResultPanel({ parts, userAnswers, isFullMock }) {
                 <span className="rp-stat-lbl">Score</span>
               </div>
             </div>
-
-            {/* ── CEFR karta — faqat full mock ── */}
             {cefr && (
               <div className="rp-cefr-card" style={{ borderColor: cefr.color }}>
                 <div className="rp-cefr-top">
@@ -314,12 +384,24 @@ export default function ResultPanel({ parts, userAnswers, isFullMock }) {
                   )}
                 </div>
               </div>
-              {showExpl && r.explanation && (
+
+              {/* ── Explanation: matn + audio (listening uchun) ── */}
+              {showExpl && (r.explanation || r.audio_url) && (
                 <div className="rp-expl">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="#92400e" stroke="none">
                     <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                   </svg>
-                  <span>{r.explanation}</span>
+                  <div className="rp-expl-content">
+                    {r.explanation && <span>{r.explanation}</span>}
+                    {/* Audio explanation — faqat listening testlarda */}
+                    {r.audio_url && (
+                      <ExplAudioPlayer
+                        audioUrl={r.audio_url}
+                        startTime={r.audio_start || 0}
+                        endTime={r.audio_end || null}
+                      />
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -395,12 +477,9 @@ export default function ResultPanel({ parts, userAnswers, isFullMock }) {
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
           </svg>
-          Reading Tests
+          {isListening ? 'Listening Tests' : 'Reading Tests'}
         </button>
-        <button
-          className="rp-bot-btn primary"
-          onClick={() => window.location.reload()}
-        >
+        <button className="rp-bot-btn primary" onClick={() => window.location.reload()}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="1 4 1 10 7 10"/>
             <path d="M3.51 15a9 9 0 1 0 .49-3"/>

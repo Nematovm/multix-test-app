@@ -1,6 +1,7 @@
 import React from 'react';
 import './PassageRenderer.css';
 
+
 // ── Shared highlight helper ──
 function renderWithHighlights(content, highlights) {
   if (!highlights || !highlights.length) return content;
@@ -535,6 +536,64 @@ export function ReadingMixedRenderer({ part, answers, onAnswer, submitted, highl
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── LISTENING MCQ RENDERER ──
+// PassageRenderer.jsx oxiriga qo'shing va export qiling
+
+export function ListeningMCQRenderer({ part, answers, onAnswer, submitted, highlights = [], audioTime = 0 }) {
+  const questions = part.questions || [];
+
+  const isCorrect = (qId) => {
+    const correct = (part.answers?.[qId] || '').toUpperCase();
+    const user    = (answers[qId]         || '').toUpperCase();
+    return user === correct;
+  };
+
+  return (
+    <div className="lmcq-layout">
+      {questions.map((q) => {
+        const userAnswer = answers[q.id] || '';
+        const correct    = part.answers?.[q.id] || '';
+
+        return (
+          <div key={q.id} className={`lmcq-block ${submitted ? (isCorrect(q.id) ? 'ok' : 'err') : ''}`}>
+            <div className="lmcq-q-row">
+              <span className="lmcq-q-num">{q.number}</span>
+              {q.text && <span className="lmcq-q-text">{q.text}</span>}
+            </div>
+
+            <div className="lmcq-options">
+              {(q.options || []).map(opt => {
+                let cls = 'lmcq-option';
+                if (submitted) {
+                  if (opt.key.toUpperCase() === correct.toUpperCase()) cls += ' correct';
+                  else if (opt.key.toUpperCase() === userAnswer.toUpperCase()) cls += ' wrong';
+                } else if (userAnswer.toUpperCase() === opt.key.toUpperCase()) {
+                  cls += ' selected';
+                }
+                return (
+                  <button
+                    key={opt.key}
+                    className={cls}
+                    onClick={() => !submitted && onAnswer(q.id, opt.key)}
+                    disabled={submitted}
+                  >
+                    <span className="lmcq-opt-key">{opt.key}</span>
+                    <span className="lmcq-opt-text">{opt.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {submitted && !isCorrect(q.id) && (
+              <div className="lmcq-correct-hint">✓ Correct answer: {correct}</div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

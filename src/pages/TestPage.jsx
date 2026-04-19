@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import PassageRenderer, { MatchingRenderer, HeadingMatchRenderer, ReadingMCQRenderer, ReadingMixedRenderer } from '../components/PassageRenderer';
+import PassageRenderer, { MatchingRenderer, HeadingMatchRenderer, ReadingMCQRenderer, ReadingMixedRenderer, ListeningMCQRenderer } from '../components/PassageRenderer';
 import ResultPanel from '../components/ResultPanel';
 import NotePanel from '../components/NotePanel';
 import './TestPage.css';
@@ -8,11 +8,8 @@ import { useParams } from 'react-router-dom';
 const API_BASE      = process.env.REACT_APP_API_URL || 'https://valiant-expression-production-a4f5.up.railway.app';
 const DASHBOARD_URL = 'https://multx.uz/Pages/dashboard.html';
 
-// ── Barcha to'g'ri/noto'g'ri javoblarni hisoblash ──
 function calcScore(parts, userAnswers) {
-  let correct = 0;
-  let total   = 0;
-
+  let correct = 0, total = 0;
   parts.forEach(part => {
     if (part.type === 'reading-mixed') {
       (part.question_groups || []).forEach(group => {
@@ -35,7 +32,6 @@ function calcScore(parts, userAnswers) {
       });
       return;
     }
-
     if (part.type === 'reading-mcq') {
       const groups = part.question_groups || [{ questions: part.questions || [] }];
       groups.forEach(group => {
@@ -48,7 +44,6 @@ function calcScore(parts, userAnswers) {
       });
       return;
     }
-
     if (part.type === 'matching') {
       (part.questions || []).forEach(q => {
         total++;
@@ -58,7 +53,6 @@ function calcScore(parts, userAnswers) {
       });
       return;
     }
-
     if (part.type === 'heading-match') {
       (part.paragraphs || []).forEach(para => {
         total++;
@@ -68,8 +62,15 @@ function calcScore(parts, userAnswers) {
       });
       return;
     }
-
-    // Default FITB
+    if (part.type === 'listening-mcq') {
+      (part.questions || []).forEach(q => {
+        total++;
+        const corr = (part.answers?.[q.id] || '').toUpperCase();
+        const user = (userAnswers[q.id] || '').toUpperCase();
+        if (user === corr) correct++;
+      });
+      return;
+    }
     if (part.answers) {
       Object.entries(part.answers).forEach(([id, corr]) => {
         total++;
@@ -78,8 +79,72 @@ function calcScore(parts, userAnswers) {
       });
     }
   });
-
   return { correct, total };
+}
+
+// ── Audio Player Component ──
+function AudioPlayer({ audioUrl, onTimeUpdate }) {
+  const audioRef  = useRef(null);
+  const [playing,     setPlaying]     = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration,    setDuration]    = useState(0);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) { audio.pause(); setPlaying(false); }
+    else         { audio.play().catch(() => {}); setPlaying(true); }
+  };
+
+  const handleSeek = (e) => {
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    audio.currentTime = pct * duration;
+  };
+
+  const fmt = (s) => {
+    const m   = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div className="tp-audio-player">
+      <audio
+        ref={audioRef}
+        src={audioUrl}
+        onTimeUpdate={e => {
+          const t = e.target.currentTime;
+          setCurrentTime(t);
+          onTimeUpdate && onTimeUpdate(t);
+        }}
+        onLoadedMetadata={e => setDuration(e.target.duration)}
+        onEnded={() => setPlaying(false)}
+      />
+      <button className="tp-audio-play-btn" onClick={togglePlay}>
+        {playing ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="4" width="4" height="16" rx="1"/>
+            <rect x="14" y="4" width="4" height="16" rx="1"/>
+          </svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5,3 19,12 5,21"/>
+          </svg>
+        )}
+      </button>
+      <span className="tp-audio-time">{fmt(currentTime)}</span>
+      <div className="tp-audio-track" onClick={handleSeek}>
+        <div className="tp-audio-fill" style={{ width: `${pct}%` }} />
+        <div className="tp-audio-thumb" style={{ left: `${pct}%` }} />
+      </div>
+      <span className="tp-audio-time">{fmt(duration)}</span>
+    </div>
+  );
 }
 
 export default function TestPage() {
@@ -100,9 +165,9 @@ export default function TestPage() {
   const [toolbarPos,      setToolbarPos]      = useState({ x: 0, y: 0 });
   const [selectedText,    setSelectedText]    = useState('');
   const [attemptId,       setAttemptId]       = useState(null);
+  const [audioTime,       setAudioTime]       = useState(0);
   const passageRef = useRef(null);
 
-  // Token URL dan olib localStorage ga saqlash
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken  = urlParams.get('token');
@@ -112,21 +177,15 @@ export default function TestPage() {
     }
   }, []);
 
-  // ── TEST JSON NI YUKLASH ──
-  // Token ni header ga qo'shib yuboramiz — admin endpoint talab qiladi
   useEffect(() => {
     if (!id) return;
     const fetchTestData = async () => {
-      setLoading(true);
-      setError(null);
+      setLoading(true); setError(null);
       try {
-        const token = localStorage.getItem('cp_token');
+        const token   = localStorage.getItem('cp_token');
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-
-        const res = await fetch(`${API_BASE}/admin/tests/${id}/json-data`, { headers });
-
+        const res     = await fetch(`${API_BASE}/admin/tests/${id}/json-data`, { headers });
         if (!res.ok) {
-          // 401/403 bo'lsa — login sahifasiga yo'naltirish
           if (res.status === 401 || res.status === 403) {
             window.location.href = 'https://multx.uz/Pages/auth.html';
             return;
@@ -137,7 +196,6 @@ export default function TestPage() {
               : `Server xatosi: ${res.status}`
           );
         }
-
         const data = await res.json();
         setTestData(data);
         setTimeLeft((data.duration || 20) * 60);
@@ -204,32 +262,23 @@ export default function TestPage() {
 
   const goBack = () => { window.location.href = DASHBOARD_URL; };
 
-  // ── SUBMIT ──
   const handleSubmit = useCallback(async (currentAnswers) => {
     const finalAnswers = currentAnswers || answers;
     setSubmitted(true);
-
     if (!testData) return;
-
     const { correct, total } = calcScore(testData.parts, finalAnswers);
-    const percent = total > 0 ? Math.round((correct / total) * 100 * 10) / 10 : 0;
-
+    const percent   = total > 0 ? Math.round((correct / total) * 100 * 10) / 10 : 0;
     const timeSpent = startTime ? Math.round((Date.now() - startTime) / 1000) : null;
-
-    const token = localStorage.getItem('cp_token');
+    const token     = localStorage.getItem('cp_token');
     if (!token) return;
-
     try {
       const res = await fetch(`${API_BASE}/attempts`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           test_id:            parseInt(id),
           test_name:          testData.title || testData.name || 'Test',
-          test_section:       'reading',
+          test_section:       testData.section || 'reading',
           score:              correct,
           total:              total,
           percent:            percent,
@@ -237,10 +286,7 @@ export default function TestPage() {
           user_answers:       finalAnswers,
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setAttemptId(data.id);
-      }
+      if (res.ok) { const data = await res.json(); setAttemptId(data.id); }
     } catch (err) {
       console.error('Attempt saqlashda xato:', err);
     }
@@ -273,10 +319,12 @@ export default function TestPage() {
 
   const parts          = testData.parts;
   const part           = parts[currentPart];
+  const isListening    = testData.section === 'listening';
   const isMatching     = part.type === 'matching';
   const isHeadingMatch = part.type === 'heading-match';
   const isReadingMCQ   = part.type === 'reading-mcq';
   const isReadingMixed = part.type === 'reading-mixed';
+  const isListeningMCQ = part.type === 'listening-mcq';
 
   const formatTime = (s) =>
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
@@ -286,6 +334,7 @@ export default function TestPage() {
   const getPartAnswerKeys = (p) => {
     if (p.type === 'matching')      return (p.questions  || []).map(q => q.id);
     if (p.type === 'heading-match') return (p.paragraphs || []).map(para => para.id);
+    if (p.type === 'listening-mcq') return (p.questions  || []).map(q => q.id);
     if (p.type === 'reading-mcq') {
       if (p.question_groups) return p.question_groups.flatMap(g => (g.questions || []).map(q => q.id));
       return (p.questions || []).map(q => q.id);
@@ -300,6 +349,7 @@ export default function TestPage() {
   const totalQuestions = parts.reduce((s, p) => s + getPartAnswerKeys(p).length, 0);
   const progress       = totalQuestions ? Math.round((answeredCount / totalQuestions) * 100) : 0;
   const isLow          = timeLeft < 300;
+  const currentAudioUrl = part.audio_url || testData.audio_url || null;
 
   return (
     <div className="tp-root">
@@ -312,13 +362,22 @@ export default function TestPage() {
           </svg>
           Back
         </button>
+
         <div className="tp-header-center">
           <span className="tp-test-name">{testData.title}</span>
-          <div className="tp-progress-bar">
-            <div className="tp-progress-fill" style={{ width: `${progress}%` }} />
-          </div>
-          <span className="tp-progress-text">{answeredCount}/{totalQuestions}</span>
+          {/* Listening + started + audio bor bo'lsa — player o'rtada */}
+          {isListening && started && !submitted && currentAudioUrl ? (
+            <AudioPlayer audioUrl={currentAudioUrl} onTimeUpdate={setAudioTime} />
+          ) : (
+            <>
+              <div className="tp-progress-bar">
+                <div className="tp-progress-fill" style={{ width: `${progress}%` }} />
+              </div>
+              <span className="tp-progress-text">{answeredCount}/{totalQuestions}</span>
+            </>
+          )}
         </div>
+
         <div className={`tp-timer ${isLow ? 'low' : ''}`}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/>
@@ -326,6 +385,7 @@ export default function TestPage() {
           </svg>
           {formatTime(timeLeft)}
         </div>
+
         {!started ? (
           <button className="tp-btn-start" onClick={() => { setStarted(true); setStartTime(Date.now()); }}>
             Start Test
@@ -333,6 +393,7 @@ export default function TestPage() {
         ) : !submitted ? (
           <button className="tp-btn-submit" onClick={() => handleSubmit(answers)}>Submit</button>
         ) : null}
+
         {!submitted && (
           <button
             className={`tp-btn-note ${showNotePanel ? 'active' : ''}`}
@@ -355,12 +416,11 @@ export default function TestPage() {
             userAnswers={answers}
             testId={parseInt(id)}
             attemptId={attemptId}
+            isListening={isListening}
           />
         </div>
       ) : (
         <div className="tp-body">
-
-          {/* ── SIDEBAR ── */}
           <aside className="tp-sidebar">
             <div className="tp-sidebar-label">Parts</div>
             {parts.map((p, i) => {
@@ -377,7 +437,6 @@ export default function TestPage() {
                 </button>
               );
             })}
-
             {highlights.length > 0 && (
               <div className="tp-highlight-list">
                 <div className="tp-sidebar-label" style={{ marginTop: 20 }}>Highlights</div>
@@ -398,38 +457,30 @@ export default function TestPage() {
             )}
           </aside>
 
-          {/* ── MAIN ── */}
           <main className="tp-main" onMouseUp={handleMouseUp} ref={passageRef}>
             <div className="tp-part-header">
-              <div className="tp-part-badge">Part {part.part_number}</div>
+              <div className="tp-part-badge">
+                {isListening && '🎧 '}Part {part.part_number}
+              </div>
               <p className="tp-instruction">{part.instruction}</p>
             </div>
             <div className="tp-passage-card">
-              {isMatching ? (
-                <MatchingRenderer
+              {isListeningMCQ ? (
+                <ListeningMCQRenderer
                   part={part} answers={answers} onAnswer={handleAnswer}
                   submitted={submitted} highlights={highlights}
+                  audioTime={audioTime}
                 />
+              ) : isMatching ? (
+                <MatchingRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
               ) : isHeadingMatch ? (
-                <HeadingMatchRenderer
-                  part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted} highlights={highlights}
-                />
+                <HeadingMatchRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
               ) : isReadingMCQ ? (
-                <ReadingMCQRenderer
-                  part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted} highlights={highlights}
-                />
+                <ReadingMCQRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
               ) : isReadingMixed ? (
-                <ReadingMixedRenderer
-                  part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted} highlights={highlights}
-                />
+                <ReadingMixedRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
               ) : (
-                <PassageRenderer
-                  passage={part.passage} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted} highlights={highlights}
-                />
+                <PassageRenderer passage={part.passage} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
               )}
             </div>
           </main>
@@ -447,7 +498,6 @@ export default function TestPage() {
         </div>
       )}
 
-      {/* ── SELECTION TOOLBAR ── */}
       {showToolbar && (
         <div className="tp-sel-toolbar" style={{ left: toolbarPos.x, top: toolbarPos.y }}>
           <button onClick={() => applyHighlight('#fef08a')}><span style={{ background: '#fef08a' }} /></button>
@@ -465,15 +515,10 @@ export default function TestPage() {
         </div>
       )}
 
-      {/* ── FOOTER ── */}
       {!submitted && started && (
         <footer className="tp-footer">
           {parts.map((p, i) => (
-            <button
-              key={i}
-              className={`tp-fp ${currentPart === i ? 'active' : ''}`}
-              onClick={() => setCurrentPart(i)}
-            >
+            <button key={i} className={`tp-fp ${currentPart === i ? 'active' : ''}`} onClick={() => setCurrentPart(i)}>
               Part {p.part_number}
             </button>
           ))}
