@@ -149,6 +149,7 @@ function AudioPlayer({ audioUrl, onTimeUpdate }) {
 
 export default function TestPage() {
   const { id } = useParams();
+  const isListeningPage = window.location.pathname.startsWith('/listening');
   const [testData,        setTestData]        = useState(null);
   const [loading,         setLoading]         = useState(true);
   const [error,           setError]           = useState(null);
@@ -177,14 +178,21 @@ export default function TestPage() {
     }
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
     if (!id) return;
     const fetchTestData = async () => {
       setLoading(true); setError(null);
       try {
         const token   = localStorage.getItem('cp_token');
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const res     = await fetch(`${API_BASE}/admin/tests/${id}/json-data`, { headers });
+        
+        // ← O'ZGARTIRISH SHU YERDA
+        const isListeningPage = window.location.pathname.startsWith('/listening');
+        const endpoint = isListeningPage
+            ? `${API_BASE}/admin/listening-tests/${id}/json-data`
+            : `${API_BASE}/admin/tests/${id}/json-data`;
+        
+        const res = await fetch(endpoint, { headers });
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
             window.location.href = 'https://multx.uz/Pages/auth.html';
