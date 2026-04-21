@@ -89,12 +89,17 @@ function AudioPlayer({ audioUrl, onTimeUpdate, autoPlay }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration,    setDuration]    = useState(0);
 
-  useEffect(() => {
-    if (autoPlay && audioRef.current) {
-      audioRef.current.play().catch(() => {});
-      setPlaying(true);
-    }
-  }, [autoPlay]);
+useEffect(() => {
+  if (autoPlay && audioRef.current) {
+    // Kichik delay — DOM tayyor bo'lishi uchun
+    const timer = setTimeout(() => {
+      audioRef.current?.play()
+        .then(() => setPlaying(true))
+        .catch(err => console.warn('Audio play failed:', err));
+    }, 100);
+    return () => clearTimeout(timer);
+  }
+}, [autoPlay]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -434,9 +439,9 @@ export default function TestPage() {
         <div className="tp-header-center">
           <span className="tp-test-name">{testData.title}</span>
           {/* Listening + audioStarted + audio bor bo'lsa — player o'rtada */}
-          {isListening && audioStarted && !submitted && currentAudioUrl ? (
-            <AudioPlayer audioUrl={currentAudioUrl} onTimeUpdate={setAudioTime} autoPlay={true} />
-          ) : (
+{isListening && audioStarted && !submitted && currentAudioUrl ? (
+  <AudioPlayer key={currentAudioUrl} audioUrl={currentAudioUrl} onTimeUpdate={setAudioTime} autoPlay={audioStarted} />
+) : (
             <>
               <div className="tp-progress-bar">
                 <div className="tp-progress-fill" style={{ width: `${progress}%` }} />
