@@ -562,7 +562,7 @@ export function ListeningMCQRenderer({ part, answers, onAnswer, submitted, highl
           <div key={q.id} className={`lmcq-block ${submitted ? (isCorrect(q.id) ? 'ok' : 'err') : ''}`}>
             <div className="lmcq-q-row">
               <span className="lmcq-q-num">{q.number}</span>
-              {q.text && <span className="lmcq-q-text">{q.text}</span>}
+              {q.text && <span className="lmcq-q-text">{renderWithHighlights(q.text, highlights)}</span>}
             </div>
 
             <div className="lmcq-options">
@@ -575,15 +575,12 @@ export function ListeningMCQRenderer({ part, answers, onAnswer, submitted, highl
                   cls += ' selected';
                 }
                 return (
-                  <button
-                    key={opt.key}
-                    className={cls}
-                    onClick={() => !submitted && onAnswer(q.id, opt.key)}
-                    disabled={submitted}
-                  >
-                    <span className="lmcq-opt-key">{opt.key}</span>
-                    <span className="lmcq-opt-text">{opt.text}</span>
-                  </button>
+                <button key={opt.key} className={cls}  onClick={() => !submitted && onAnswer(q.id, opt.key)} disabled={submitted}>
+                  <span className="lmcq-opt-key">{opt.key}</span>
+                  <span className="lmcq-opt-text">
+    {renderWithHighlights(opt.text, highlights)}
+  </span>
+</button>
                 );
               })}
             </div>
