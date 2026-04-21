@@ -3,7 +3,7 @@ import './PassageRenderer.css';
 
 
 // ── Shared highlight helper ──
-function renderWithHighlights(content, highlights) {
+export function renderWithHighlights(content, highlights) {
   if (!highlights || !highlights.length) return content;
   let parts = [{ type: 'text', content }];
   highlights.forEach(h => {

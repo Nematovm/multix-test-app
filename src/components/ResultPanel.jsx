@@ -162,13 +162,15 @@ function buildResults(parts, userAnswers) {
 
 // ── Explanation Audio Player (kichik) ──
 function ExplAudioPlayer({ audioUrl, startTime = 0, endTime = null }) {
-  const audioRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
-  const [current, setCurrent] = useState(startTime);
+  const audioRef   = useRef(null);
+  const [playing,  setPlaying]  = useState(false);
+  const [elapsed,  setElapsed]  = useState(0); // startTime dan o'tgan vaqt
+
+  const duration = endTime !== null ? endTime - startTime : 0;
 
   const fmt = (s) => {
-    const m = Math.floor(s / 60);
-    return `${m}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+    s = Math.max(0, s);
+    return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
   };
 
   const toggle = () => {
@@ -178,9 +180,20 @@ function ExplAudioPlayer({ audioUrl, startTime = 0, endTime = null }) {
       audio.pause();
       setPlaying(false);
     } else {
-      audio.currentTime = startTime;
-      audio.play().catch(() => {});
-      setPlaying(true);
+      // canplaythrough bo'lguncha kutmasdan, to'g'ridan seek qilamiz
+      const doPlay = () => {
+        audio.currentTime = startTime;
+        audio.play()
+          .then(() => setPlaying(true))
+          .catch(err => console.warn('play failed:', err));
+      };
+      // Agar audio hali load bo'lmagan bo'lsa
+      if (audio.readyState < 2) {
+        audio.load();
+        audio.addEventListener('canplay', doPlay, { once: true });
+      } else {
+        doPlay();
+      }
     }
   };
 
@@ -189,15 +202,21 @@ function ExplAudioPlayer({ audioUrl, startTime = 0, endTime = null }) {
       <audio
         ref={audioRef}
         src={audioUrl}
+        preload="metadata"
         onTimeUpdate={e => {
           const t = e.target.currentTime;
-          setCurrent(t);
-          if (endTime && t >= endTime) {
+          const el = Math.max(0, t - startTime);
+          setElapsed(el);
+          if (endTime !== null && t >= endTime) {
             e.target.pause();
             setPlaying(false);
+            setElapsed(0);
           }
         }}
-        onEnded={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false);
+          setElapsed(0);
+        }}
       />
       <button className="rp-expl-audio-btn" onClick={toggle}>
         {playing ? (
@@ -212,7 +231,7 @@ function ExplAudioPlayer({ audioUrl, startTime = 0, endTime = null }) {
         )}
       </button>
       <span className="rp-expl-audio-time">
-        {fmt(current)} {endTime ? `/ ${fmt(endTime)}` : ''}
+        {fmt(elapsed)} / {fmt(duration)}
       </span>
       <span className="rp-expl-audio-label">Audio explanation</span>
     </div>

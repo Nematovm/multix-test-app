@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import PassageRenderer, { MatchingRenderer, HeadingMatchRenderer, ReadingMCQRenderer, ReadingMixedRenderer, ListeningMCQRenderer } from '../components/PassageRenderer';
+import PassageRenderer, { MatchingRenderer, HeadingMatchRenderer, ReadingMCQRenderer, ReadingMixedRenderer, ListeningMCQRenderer, renderWithHighlights } from '../components/PassageRenderer';
 import ResultPanel from '../components/ResultPanel';
 import NotePanel from '../components/NotePanel';
 import './TestPage.css';
@@ -274,6 +274,7 @@ export default function TestPage() {
   const handleMouseUp = useCallback((e) => {
     if (submitted) return;
     if (e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION') return;
+    if (e.target.closest('button')) return;
     setTimeout(() => {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.toString().trim()) { setShowToolbar(false); return; }
@@ -535,7 +536,9 @@ export default function TestPage() {
               <div className="tp-part-badge">
                 {isListening && '🎧 '}Part {part.part_number}
               </div>
-              <p className="tp-instruction">{part.instruction}</p>
+<p className="tp-instruction">
+  {renderWithHighlights(part.instruction, highlights)}
+</p>
             </div>
             <div className="tp-passage-card">
               {isListeningMCQ ? (
