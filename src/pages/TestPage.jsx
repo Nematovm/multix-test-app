@@ -83,11 +83,18 @@ function calcScore(parts, userAnswers) {
 }
 
 // ── Audio Player Component ──
-function AudioPlayer({ audioUrl, onTimeUpdate }) {
+function AudioPlayer({ audioUrl, onTimeUpdate, autoPlay }) {
   const audioRef  = useRef(null);
   const [playing,     setPlaying]     = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration,    setDuration]    = useState(0);
+
+  useEffect(() => {
+    if (autoPlay && audioRef.current) {
+      audioRef.current.play().catch(() => {});
+      setPlaying(true);
+    }
+  }, [autoPlay]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -147,9 +154,34 @@ function AudioPlayer({ audioUrl, onTimeUpdate }) {
   );
 }
 
+// ── Audio Modal Component ──
+function AudioModal({ onPlay }) {
+  return (
+    <div className="tp-audio-modal-overlay">
+      <div className="tp-audio-modal">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="white" style={{ marginBottom: 16 }}>
+          <path d="M12 3a9 9 0 1 0 0 18A9 9 0 0 0 12 3zm-1 13V8l6 4-6 4z"/>
+        </svg>
+        <p style={{ color: 'white', fontSize: 15, textAlign: 'center', marginBottom: 8, maxWidth: 420, lineHeight: 1.5 }}>
+          You will be listening to an audio clip during this test.<br/>
+          You will not be permitted to pause or rewind the audio while answering the questions.
+        </p>
+        <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginBottom: 24 }}>
+          To continue, click Play.
+        </p>
+        <button className="tp-audio-modal-play-btn" onClick={onPlay}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5,3 19,12 5,21"/>
+          </svg>
+          Play
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function TestPage() {
   const { id } = useParams();
-  // const isListeningPage = window.location.pathname.startsWith('/listening');
   const [testData,        setTestData]        = useState(null);
   const [loading,         setLoading]         = useState(true);
   const [error,           setError]           = useState(null);
@@ -167,35 +199,34 @@ export default function TestPage() {
   const [selectedText,    setSelectedText]    = useState('');
   const [attemptId,       setAttemptId]       = useState(null);
   const [audioTime,       setAudioTime]       = useState(0);
+  // ── Audio modal states ──
+  const [showAudioModal,  setShowAudioModal]  = useState(false);
+  const [audioStarted,    setAudioStarted]    = useState(false);
   const passageRef = useRef(null);
 
-useEffect(() => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const urlToken  = urlParams.get('token');
-  if (urlToken) {
-    localStorage.setItem('cp_token', urlToken);
-    // token saqlangandan keyin tekshirma, davom et
-    return;
-  }
-  if (!localStorage.getItem('cp_token')) {
-    window.location.href = 'https://multx.uz/Pages/auth.html';
-  }
-}, []);
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken  = urlParams.get('token');
+    if (urlToken) {
+      localStorage.setItem('cp_token', urlToken);
+      return;
+    }
+    if (!localStorage.getItem('cp_token')) {
+      window.location.href = 'https://multx.uz/Pages/auth.html';
+    }
+  }, []);
 
-useEffect(() => {
+  useEffect(() => {
     if (!id) return;
     const fetchTestData = async () => {
       setLoading(true); setError(null);
       try {
         const token   = localStorage.getItem('cp_token');
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-        
-        // ← O'ZGARTIRISH SHU YERDA
         const isListeningPage = window.location.pathname.startsWith('/listening');
         const endpoint = isListeningPage
             ? `${API_BASE}/admin/listening-tests/${id}/json-data`
             : `${API_BASE}/admin/tests/${id}/json-data`;
-        
         const res = await fetch(endpoint, { headers });
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
@@ -273,6 +304,26 @@ useEffect(() => {
   };
 
   const goBack = () => { window.location.href = DASHBOARD_URL; };
+
+  // ── Start Test bosganda: listening bo'lsa modal, aks holda to'g'ridan boshlash ──
+  const handleStartTest = () => {
+    setStarted(true);
+    setStartTime(Date.now());
+    const isListeningPage = window.location.pathname.startsWith('/listening');
+    if (isListeningPage && testData) {
+      const hasAudio = testData.audio_url || (testData.parts || []).some(p => p.audio_url);
+      if (hasAudio) {
+        setShowAudioModal(true);
+        return;
+      }
+    }
+  };
+
+  // ── Modal "Play" bosganda ──
+  const handleAudioModalPlay = () => {
+    setShowAudioModal(false);
+    setAudioStarted(true);
+  };
 
   const handleSubmit = useCallback(async (currentAnswers) => {
     const finalAnswers = currentAnswers || answers;
@@ -366,6 +417,11 @@ useEffect(() => {
   return (
     <div className="tp-root">
 
+      {/* ── AUDIO MODAL ── */}
+      {showAudioModal && currentAudioUrl && (
+        <AudioModal onPlay={handleAudioModalPlay} />
+      )}
+
       {/* ── HEADER ── */}
       <header className="tp-header">
         <button className="tp-back" onClick={goBack}>
@@ -377,9 +433,9 @@ useEffect(() => {
 
         <div className="tp-header-center">
           <span className="tp-test-name">{testData.title}</span>
-          {/* Listening + started + audio bor bo'lsa — player o'rtada */}
-          {isListening && started && !submitted && currentAudioUrl ? (
-            <AudioPlayer audioUrl={currentAudioUrl} onTimeUpdate={setAudioTime} />
+          {/* Listening + audioStarted + audio bor bo'lsa — player o'rtada */}
+          {isListening && audioStarted && !submitted && currentAudioUrl ? (
+            <AudioPlayer audioUrl={currentAudioUrl} onTimeUpdate={setAudioTime} autoPlay={true} />
           ) : (
             <>
               <div className="tp-progress-bar">
@@ -399,7 +455,7 @@ useEffect(() => {
         </div>
 
         {!started ? (
-          <button className="tp-btn-start" onClick={() => { setStarted(true); setStartTime(Date.now()); }}>
+          <button className="tp-btn-start" onClick={handleStartTest}>
             Start Test
           </button>
         ) : !submitted ? (

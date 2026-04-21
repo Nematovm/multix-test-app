@@ -345,3 +345,42 @@
   background: #f0fdf4;
   border-radius: 6px;
 }
+
+/* ── Audio Modal ── */
+.tp-audio-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.tp-audio-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 40px;
+  max-width: 500px;
+  width: 90%;
+}
+
+.tp-audio-modal-play-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  color: #111;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.tp-audio-modal-play-btn:hover {
+  opacity: 0.85;
+}
