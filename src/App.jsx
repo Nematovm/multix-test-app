@@ -6,8 +6,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/test/:testId" element={<TestPage />} />
-        <Route path="/listening/:testId" element={<TestPage />} />
+        <Route path="/test/:id" element={<TestPage />} />
+        <Route path="/listening/:id" element={<TestPage />} />
       </Routes>
     </BrowserRouter>
   );

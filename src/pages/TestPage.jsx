@@ -149,7 +149,7 @@ function AudioPlayer({ audioUrl, onTimeUpdate }) {
 
 export default function TestPage() {
   const { id } = useParams();
-  const isListeningPage = window.location.pathname.startsWith('/listening');
+  // const isListeningPage = window.location.pathname.startsWith('/listening');
   const [testData,        setTestData]        = useState(null);
   const [loading,         setLoading]         = useState(true);
   const [error,           setError]           = useState(null);
