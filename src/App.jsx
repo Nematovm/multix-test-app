@@ -1,14 +1,12 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import TestPage from './pages/TestPage';
 
+const router = createBrowserRouter([
+  { path: '/test/:id',      element: <TestPage /> },
+  { path: '/listening/:id', element: <TestPage /> },
+]);
+
 export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/test/:id" element={<TestPage />} />
-        <Route path="/listening/:id" element={<TestPage />} />
-      </Routes>
-    </BrowserRouter>
-  );
+  return <RouterProvider router={router} />;
 }
