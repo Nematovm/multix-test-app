@@ -169,14 +169,18 @@ export default function TestPage() {
   const [audioTime,       setAudioTime]       = useState(0);
   const passageRef = useRef(null);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken  = urlParams.get('token');
-    if (urlToken) localStorage.setItem('cp_token', urlToken);
-    else if (!localStorage.getItem('cp_token')) {
-      window.location.href = 'https://multx.uz/Pages/auth.html';
-    }
-  }, []);
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlToken  = urlParams.get('token');
+  if (urlToken) {
+    localStorage.setItem('cp_token', urlToken);
+    // token saqlangandan keyin tekshirma, davom et
+    return;
+  }
+  if (!localStorage.getItem('cp_token')) {
+    window.location.href = 'https://multx.uz/Pages/auth.html';
+  }
+}, []);
 
 useEffect(() => {
     if (!id) return;
