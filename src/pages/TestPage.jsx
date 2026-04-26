@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import PassageRenderer, { MatchingRenderer, HeadingMatchRenderer, ReadingMCQRenderer, ReadingMixedRenderer, ListeningMCQRenderer, renderWithHighlights } from '../components/PassageRenderer';
+import PassageRenderer, { 
+  MatchingRenderer, HeadingMatchRenderer, ReadingMCQRenderer, 
+  ReadingMixedRenderer, ListeningMCQRenderer, ListeningFITBRenderer,
+  ListeningMatchingRenderer,   // ← QO'SHILDI
+  ListeningMapRenderer, 
+  renderWithHighlights 
+} from '../components/PassageRenderer';
 import ResultPanel from '../components/ResultPanel';
 import NotePanel from '../components/NotePanel';
 import './TestPage.css';
 import { useParams } from 'react-router-dom';
+
 
 const API_BASE      = process.env.REACT_APP_API_URL || 'https://valiant-expression-production-a4f5.up.railway.app';
 const DASHBOARD_URL = 'https://multx.uz/Pages/dashboard.html';
@@ -63,6 +70,32 @@ function calcScore(parts, userAnswers) {
       return;
     }
     if (part.type === 'listening-mcq') {
+      (part.questions || []).forEach(q => {
+        total++;
+        const corr = (part.answers?.[q.id] || '').toUpperCase();
+        const user = (userAnswers[q.id] || '').toUpperCase();
+        if (user === corr) correct++;
+      });
+      return;
+    }
+    if (part.type === 'listening-fitb') {
+  Object.entries(part.answers || {}).forEach(([id, corr]) => {
+    total++;
+    const user = (userAnswers[id] || '').toLowerCase().trim();
+    if (user === corr.toLowerCase().trim()) correct++;
+  });
+  return;
+}
+    if (part.type === 'listening-matching') {
+      (part.speakers || []).forEach(sp => {
+        total++;
+        const corr = (part.answers?.[sp.id] || '').toUpperCase();
+        const user = (userAnswers[sp.id] || '').toUpperCase();
+        if (user === corr) correct++;
+      });
+      return;
+    }
+    if (part.type === 'listening-map') {
       (part.questions || []).forEach(q => {
         total++;
         const corr = (part.answers?.[q.id] || '').toUpperCase();
@@ -394,6 +427,9 @@ export default function TestPage() {
   const isReadingMCQ   = part.type === 'reading-mcq';
   const isReadingMixed = part.type === 'reading-mixed';
   const isListeningMCQ = part.type === 'listening-mcq';
+  const isListeningFITB = part.type === 'listening-fitb';
+  const isListeningMatching = part.type === 'listening-matching';
+  const isListeningMap = part.type === 'listening-map';
 
   const formatTime = (s) =>
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
@@ -404,6 +440,9 @@ export default function TestPage() {
     if (p.type === 'matching')      return (p.questions  || []).map(q => q.id);
     if (p.type === 'heading-match') return (p.paragraphs || []).map(para => para.id);
     if (p.type === 'listening-mcq') return (p.questions  || []).map(q => q.id);
+    if (p.type === 'listening-fitb') return Object.keys(p.answers || {});
+    if (p.type === 'listening-matching') return (p.speakers || []).map(sp => sp.id);
+    if (p.type === 'listening-map') return (p.questions || []).map(q => q.id);
     if (p.type === 'reading-mcq') {
       if (p.question_groups) return p.question_groups.flatMap(g => (g.questions || []).map(q => q.id));
       return (p.questions || []).map(q => q.id);
@@ -541,23 +580,38 @@ export default function TestPage() {
 </p>
             </div>
             <div className="tp-passage-card">
-              {isListeningMCQ ? (
-                <ListeningMCQRenderer
-                  part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted} highlights={highlights}
-                  audioTime={audioTime}
-                />
-              ) : isMatching ? (
-                <MatchingRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
-              ) : isHeadingMatch ? (
-                <HeadingMatchRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
-              ) : isReadingMCQ ? (
-                <ReadingMCQRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
-              ) : isReadingMixed ? (
-                <ReadingMixedRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
-              ) : (
-                <PassageRenderer passage={part.passage} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
-              )}
+  {isListeningMap ? (
+    <ListeningMapRenderer
+      part={part} answers={answers} onAnswer={handleAnswer}
+      submitted={submitted} highlights={highlights}
+    />
+  ) : isListeningMatching ? (
+    <ListeningMatchingRenderer
+      part={part} answers={answers} onAnswer={handleAnswer}
+      submitted={submitted} highlights={highlights}
+    />
+  ) : isListeningFITB ? (
+  <ListeningFITBRenderer
+    part={part} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} highlights={highlights}
+  />
+) : isListeningMCQ ? (
+  <ListeningMCQRenderer
+    part={part} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} highlights={highlights}
+    audioTime={audioTime}
+  />
+) : isMatching ? (
+  <MatchingRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+) : isHeadingMatch ? (
+  <HeadingMatchRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+) : isReadingMCQ ? (
+  <ReadingMCQRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+) : isReadingMixed ? (
+  <ReadingMixedRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+) : (
+  <PassageRenderer passage={part.passage} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+)}
             </div>
           </main>
 

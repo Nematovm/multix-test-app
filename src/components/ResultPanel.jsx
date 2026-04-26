@@ -141,6 +141,64 @@ function buildResults(parts, userAnswers) {
       });
       return;
     }
+    if (part.type === 'listening-fitb') {
+  Object.entries(part.answers || {}).forEach(([id, correct]) => {
+    const user = (userAnswers[id] || '').toLowerCase().trim();
+    const expl = part.explanations?.[id] || '';
+    allResults.push({
+      id,
+      question_number: part.passage?.find(p => p.id === id)?.number ?? id,
+      user_answer:    userAnswers[id] || '',
+      correct_answer: correct,
+      explanation:    typeof expl === 'object' ? expl.text || '' : expl,
+      audio_url:      typeof expl === 'object' ? expl.audio_url   || null : null,
+      audio_start:    typeof expl === 'object' ? expl.audio_start || 0    : 0,
+      audio_end:      typeof expl === 'object' ? expl.audio_end   || null : null,
+      is_correct:     user === correct.toLowerCase().trim(),
+    });
+  });
+  return;
+}
+
+    // ── LISTENING MATCHING ──
+    if (part.type === 'listening-matching') {
+      (part.speakers || []).forEach(sp => {
+        const correct = (part.answers?.[sp.id] || '').toUpperCase().trim();
+        const user    = (userAnswers[sp.id]     || '').toUpperCase().trim();
+        const expl    = part.explanations?.[sp.id] || '';
+        allResults.push({
+          id:              sp.id,
+          question_number: sp.number,
+          user_answer:     userAnswers[sp.id] || '',
+          correct_answer:  part.answers?.[sp.id] || '',
+          explanation:     typeof expl === 'object' ? expl.text       || '' : expl,
+          audio_url:       typeof expl === 'object' ? expl.audio_url  || null : null,
+          audio_start:     typeof expl === 'object' ? expl.audio_start || 0   : 0,
+          audio_end:       typeof expl === 'object' ? expl.audio_end  || null : null,
+          is_correct:      user === correct,
+        });
+      });
+      return;
+    }
+        if (part.type === 'listening-map') {
+      (part.questions || []).forEach(q => {
+        const correct = (part.answers?.[q.id] || '').toUpperCase().trim();
+        const user    = (userAnswers[q.id]     || '').toUpperCase().trim();
+        const expl    = part.explanations?.[q.id] || '';
+        allResults.push({
+          id:              q.id,
+          question_number: q.number,
+          user_answer:     userAnswers[q.id] || '',
+          correct_answer:  part.answers?.[q.id] || '',
+          explanation:     typeof expl === 'object' ? expl.text        || '' : expl,
+          audio_url:       typeof expl === 'object' ? expl.audio_url   || null : null,
+          audio_start:     typeof expl === 'object' ? expl.audio_start || 0   : 0,
+          audio_end:       typeof expl === 'object' ? expl.audio_end   || null : null,
+          is_correct:      user === correct,
+        });
+      });
+      return;
+    }
 
     if (!part.answers) return;
     Object.entries(part.answers).forEach(([id, correct]) => {

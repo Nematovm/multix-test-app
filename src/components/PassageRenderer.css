@@ -885,3 +885,393 @@
   }
   .p5-questions-col { padding-left: 0; }
 }
+
+
+/* ── LISTENING FITB RENDERER ── */
+.lfitb-layout {
+  padding: 8px 0;
+}
+
+.lfitb-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 24px;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.lfitb-passage {
+  font-size: 25px;
+  line-height: 3.2;
+  color: #1a1a1a;
+  font-family: 'Crimson Pro', Georgia, serif;
+}
+
+/* Har bir qator alohida blok bo'lishi uchun */
+.lfitb-passage span[style*="pre-wrap"] {
+  display: block;
+}
+
+/* ══════════════════════════════════════════════
+   LISTENING MATCHING (Part 3) — lmatch-*
+   Layout: chap = options panel | o'ng = speakers
+══════════════════════════════════════════════ */
+
+.lmatch-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  align-items: start;
+}
+
+/* ── Options (chap) ── */
+.lmatch-options-panel {
+  padding-right: 24px;
+  border-right: 1px solid #e5e7eb;
+}
+
+.lmatch-panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9ca3af;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.lmatch-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lmatch-option-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.lmatch-option-item:hover {
+  background: #f0faf9;
+  border-color: #c8ede9;
+}
+
+.lmatch-opt-key {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  background: #2caa9a;
+  color: white;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.lmatch-opt-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #374151;
+  font-family: 'Crimson Pro', Georgia, serif;
+}
+
+/* ── Speakers (o'ng) ── */
+.lmatch-speakers-panel {
+  padding-left: 24px;
+}
+
+.lmatch-speakers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.lmatch-speaker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.15s;
+}
+
+.lmatch-speaker-row:last-child {
+  border-bottom: none;
+}
+
+.lmatch-speaker-row.ok  { background: transparent; }
+.lmatch-speaker-row.err { background: transparent; }
+
+.lmatch-speaker-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.lmatch-sp-num {
+  width: 28px;
+  height: 28px;
+  background: #eef9f7;
+  color: #1d8a7c;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  flex-shrink: 0;
+}
+
+.lmatch-sp-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
+
+.lmatch-speaker-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex: 1;
+}
+
+.lmatch-select {
+  width: 100%;
+  max-width: 240px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  font-family: 'DM Sans', sans-serif;
+  appearance: auto;
+}
+
+.lmatch-select:focus         { border-color: #2caa9a; }
+.lmatch-select.selected      { border-color: #2caa9a; background: #f0faf9; color: #1d8a7c; }
+.lmatch-select.correct       { border-color: #0f6e56; background: #f0fdf4; color: #0f6e56; }
+.lmatch-select.wrong         { border-color: #dc2626; background: #fef2f2; color: #dc2626; }
+.lmatch-select:disabled      { cursor: default; opacity: 1; }
+
+.lmatch-correct-hint {
+  font-size: 12px;
+  color: #0f6e56;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .lmatch-layout {
+    grid-template-columns: 1fr;
+  }
+  .lmatch-options-panel {
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding-right: 0;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+  }
+  .lmatch-speakers-panel {
+    padding-left: 0;
+  }
+  .lmatch-select {
+    max-width: 100%;
+  }
+}
+
+
+/* ══════════════════════════════════════════════
+   LISTENING MAP (Part 4) — lmap-*
+   Layout: chap = xarita rasmi | o'ng = savollar
+══════════════════════════════════════════════ */
+
+.lmap-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  align-items: start;
+  min-height: 400px;
+}
+
+/* ── Chap: Xarita ── */
+.lmap-image-col {
+  padding-right: 28px;
+  border-right: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+}
+
+.lmap-image-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.lmap-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.lmap-img-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 300px;
+  color: #9ca3af;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── O'ng: Savollar ── */
+.lmap-questions-col {
+  padding-left: 28px;
+}
+
+.lmap-panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9ca3af;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.lmap-questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.lmap-question-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.15s;
+}
+
+.lmap-question-row:last-child {
+  border-bottom: none;
+}
+
+.lmap-q-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.lmap-q-num {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  background: #eef9f7;
+  color: #1d8a7c;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.lmap-q-text {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #111827;
+  font-family: 'Crimson Pro', Georgia, serif;
+  flex: 1;
+}
+
+.lmap-q-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.lmap-select {
+  width: 80px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #374151;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+  font-family: 'DM Sans', sans-serif;
+  appearance: auto;
+}
+
+.lmap-select:focus    { border-color: #2caa9a; }
+.lmap-select.selected { border-color: #2caa9a; background: #f0faf9; color: #1d8a7c; }
+.lmap-select.correct  { border-color: #0f6e56; background: #f0fdf4; color: #0f6e56; }
+.lmap-select.wrong    { border-color: #dc2626; background: #fef2f2; color: #dc2626; }
+.lmap-select:disabled { cursor: default; opacity: 1; }
+
+.lmap-correct-hint {
+  font-size: 13px;
+  color: #0f6e56;
+  font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .lmap-layout {
+    grid-template-columns: 1fr;
+  }
+  .lmap-image-col {
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding-right: 0;
+    padding-bottom: 20px;
+    margin-bottom: 4px;
+    position: static;
+  }
+  .lmap-questions-col {
+    padding-left: 0;
+    padding-top: 16px;
+  }
+}
