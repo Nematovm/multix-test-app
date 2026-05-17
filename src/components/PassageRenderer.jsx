@@ -613,55 +613,67 @@ return (
 
 
 // ── LISTENING FITB RENDERER ──
+// ── LISTENING FITB RENDERER ──
 export function ListeningFITBRenderer({ part, answers, onAnswer, submitted, highlights = [] }) {
   const passage = part.passage || [];
   const title   = part.passage_title || '';
 
+  // passage array ni paragraf bloklarga ajratamiz
+  // \n\n → yangi paragraph, \n → <br/>
+  const renderTextItem = (content) => {
+    // \n\n bo'yicha paragrafga ajrat
+    const paragraphs = content.split('\n\n');
+    return paragraphs.map((para, pi) => (
+      <React.Fragment key={pi}>
+        {pi > 0 && <div className="lfitb-para-gap" />}
+        {para.split('\n').map((line, li, arr) => (
+          <React.Fragment key={li}>
+            {renderWithHighlights(line, highlights)}
+            {li < arr.length - 1 && <br />}
+          </React.Fragment>
+        ))}
+      </React.Fragment>
+    ));
+  };
+
   return (
     <div className="lfitb-layout">
       {title && <div className="lfitb-title">{title}</div>}
-      <div className="lfitb-passage">
-        {passage.map((item, index) => {
-if (item.type === 'text') {
-  return (
-    <span key={index}>
-      {item.content.split('\n').map((line, li, arr) => (
-        <React.Fragment key={li}>
-          {renderWithHighlights(line, highlights)}
-          {li < arr.length - 1 && <br />}
-        </React.Fragment>
-      ))}
-    </span>
-  );
-}
-          if (item.type === 'input') {
-            const userAnswer    = answers[item.id] || '';
-            const correctAnswer = part.answers?.[item.id] || '';
-            let inputClass = 'inline-input';
-            if (submitted) {
-              inputClass += userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()
-                ? ' correct' : ' wrong';
+      <div className="lfitb-box">
+        <div className="lfitb-passage">
+          {passage.map((item, index) => {
+            if (item.type === 'text') {
+              return <span key={index}>{renderTextItem(item.content)}</span>;
             }
-            return (
-              <span key={index} className="input-wrap">
-                <span className="q-number">{item.number}</span>
-                <input
-                  type="text"
-                  className={inputClass}
-                  value={userAnswer}
-                  onChange={e => onAnswer(item.id, e.target.value)}
-                  disabled={submitted}
-                  placeholder={`(${item.number})`}
-                  maxLength={30}
-                />
-                {submitted && userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
-                  <span className="correct-hint">{correctAnswer}</span>
-                )}
-              </span>
-            );
-          }
-          return null;
-        })}
+            if (item.type === 'input') {
+              const userAnswer    = answers[item.id] || '';
+              const correctAnswer = part.answers?.[item.id] || '';
+              let inputClass = 'inline-input';
+              if (submitted) {
+                inputClass += userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()
+                  ? ' correct' : ' wrong';
+              }
+              return (
+                <span key={index} className="input-wrap">
+                  <span className="q-number">{item.number}</span>
+                  <input
+                    type="text"
+                    className={inputClass}
+                    value={userAnswer}
+                    onChange={e => onAnswer(item.id, e.target.value)}
+                    disabled={submitted}
+                    placeholder={`(${item.number})`}
+                    maxLength={30}
+                  />
+                  {submitted && userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
+                    <span className="correct-hint">{correctAnswer}</span>
+                  )}
+                </span>
+              );
+            }
+            return null;
+          })}
+        </div>
       </div>
     </div>
   );

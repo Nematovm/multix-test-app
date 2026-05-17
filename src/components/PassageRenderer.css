@@ -893,24 +893,34 @@
 }
 
 .lfitb-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   text-align: center;
   font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0.3px;
+}
+
+/* Bordered box — rasmda ko'ringan */
+.lfitb-box {
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  padding: 24px 28px;
+  background: #fff;
 }
 
 .lfitb-passage {
-  font-size: 25px;
-  line-height: 3.2;
+  font-size: 19px;
+  line-height: 2.0;
   color: #1a1a1a;
   font-family: 'Crimson Pro', Georgia, serif;
 }
 
-/* Har bir qator alohida blok bo'lishi uchun */
-.lfitb-passage span[style*="pre-wrap"] {
+/* Paragraflar orasidagi bo'sh joy */
+.lfitb-para-gap {
   display: block;
+  height: 16px;
 }
 
 /* ══════════════════════════════════════════════
