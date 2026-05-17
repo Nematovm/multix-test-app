@@ -1275,3 +1275,32 @@
     padding-top: 16px;
   }
 }
+
+/* ── Extract label (Part 5 MCQ) ── */
+.lmcq-extract-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 4px 10px;
+  margin-bottom: 10px;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0.3px;
+}
+
+.lmcq-q-row {
+  display: flex;
+  flex-direction: column;  /* ← column qilamiz */
+  gap: 4px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+/* Raqam va savolni gorizontal qoldiramiz */
+.lmcq-q-inner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}

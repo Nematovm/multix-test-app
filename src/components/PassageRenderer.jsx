@@ -562,7 +562,20 @@ export function ListeningMCQRenderer({ part, answers, onAnswer, submitted, highl
           <div key={q.id} className={`lmcq-block ${submitted ? (isCorrect(q.id) ? 'ok' : 'err') : ''}`}>
             <div className="lmcq-q-row">
               <span className="lmcq-q-num">{q.number}</span>
-              {q.text && <span className="lmcq-q-text">{renderWithHighlights(q.text, highlights)}</span>}
+              {q.text && (() => {
+  // "Extract One\n\nThe woman's receipt..." → [label, actualText]
+  const parts = q.text.split('\n\n');
+  const hasExtract = parts.length > 1 && /^Extract\s+(One|Two|Three|Four|Five)/i.test(parts[0].trim());
+  if (hasExtract) {
+    return (
+      <>
+        <span className="lmcq-extract-label">{parts[0].trim()}</span>
+        <span className="lmcq-q-text">{renderWithHighlights(parts.slice(1).join('\n\n'), highlights)}</span>
+      </>
+    );
+  }
+  return <span className="lmcq-q-text">{renderWithHighlights(q.text, highlights)}</span>;
+})()}
             </div>
 
             <div className="lmcq-options">
