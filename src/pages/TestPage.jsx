@@ -121,6 +121,7 @@ const SPEED_OPTIONS = [1, 1.25, 1.5, 2];
 function SpeedControl({ speed, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 }); // ← QO'SHING
 
   useEffect(() => {
     const handler = (e) => {
@@ -130,17 +131,35 @@ function SpeedControl({ speed, onChange }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // ← QO'SHING: button pozitsiyasini hisoblash
+  const handleToggle = () => {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setPos({
+        top: rect.bottom + 6,
+        left: rect.left + rect.width / 2,
+      });
+    }
+    setOpen(v => !v);
+  };
+
   return (
     <div className="tp-speed-wrap" ref={ref}>
       <button
         className="tp-speed-btn"
-        onClick={() => setOpen(v => !v)}
+        onClick={handleToggle}  // ← toggleni almashtiring
         title="Playback speed"
       >
         {speed}x
       </button>
       {open && (
-        <div className="tp-speed-dropdown">
+        // ← style ni fixed ga o'zgartiring
+        <div className="tp-speed-dropdown" style={{
+          position: 'fixed',
+          top: pos.top,
+          left: pos.left,
+          transform: 'translateX(-50%)',
+        }}>
           {SPEED_OPTIONS.map(s => (
             <button
               key={s}
