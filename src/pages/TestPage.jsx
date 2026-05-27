@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PassageRenderer, { 
   MatchingRenderer, HeadingMatchRenderer, ReadingMCQRenderer, 
   ReadingMixedRenderer, ListeningMCQRenderer, ListeningFITBRenderer,
-  ListeningMatchingRenderer,   // ← QO'SHILDI
+  ListeningMatchingRenderer,
   ListeningMapRenderer, 
   renderWithHighlights 
 } from '../components/PassageRenderer';
@@ -79,13 +79,13 @@ function calcScore(parts, userAnswers) {
       return;
     }
     if (part.type === 'listening-fitb') {
-  Object.entries(part.answers || {}).forEach(([id, corr]) => {
-    total++;
-    const user = (userAnswers[id] || '').toLowerCase().trim();
-    if (user === corr.toLowerCase().trim()) correct++;
-  });
-  return;
-}
+      Object.entries(part.answers || {}).forEach(([id, corr]) => {
+        total++;
+        const user = (userAnswers[id] || '').toLowerCase().trim();
+        if (user === corr.toLowerCase().trim()) correct++;
+      });
+      return;
+    }
     if (part.type === 'listening-matching') {
       (part.speakers || []).forEach(sp => {
         total++;
@@ -115,24 +115,72 @@ function calcScore(parts, userAnswers) {
   return { correct, total };
 }
 
+// ── Audio Speed Button ──
+const SPEED_OPTIONS = [1, 1.25, 1.5, 2];
+
+function SpeedControl({ speed, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="tp-speed-wrap" ref={ref}>
+      <button
+        className="tp-speed-btn"
+        onClick={() => setOpen(v => !v)}
+        title="Playback speed"
+      >
+        {speed}x
+      </button>
+      {open && (
+        <div className="tp-speed-dropdown">
+          {SPEED_OPTIONS.map(s => (
+            <button
+              key={s}
+              className={`tp-speed-option ${speed === s ? 'active' : ''}`}
+              onClick={() => { onChange(s); setOpen(false); }}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Audio Player Component ──
 function AudioPlayer({ audioUrl, onTimeUpdate, autoPlay }) {
-  const audioRef  = useRef(null);
+  const audioRef      = useRef(null);
   const [playing,     setPlaying]     = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration,    setDuration]    = useState(0);
+  const [speed,       setSpeed]       = useState(1);
 
-useEffect(() => {
-  if (autoPlay && audioRef.current) {
-    // Kichik delay — DOM tayyor bo'lishi uchun
-    const timer = setTimeout(() => {
-      audioRef.current?.play()
-        .then(() => setPlaying(true))
-        .catch(err => console.warn('Audio play failed:', err));
-    }, 100);
-    return () => clearTimeout(timer);
-  }
-}, [autoPlay]);
+  useEffect(() => {
+    if (autoPlay && audioRef.current) {
+      const timer = setTimeout(() => {
+        audioRef.current?.play()
+          .then(() => setPlaying(true))
+          .catch(err => console.warn('Audio play failed:', err));
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [autoPlay]);
+
+  // Speed o'zgarganda audio elementga ham apply qilish
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = speed;
+    }
+  }, [speed]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -188,6 +236,9 @@ useEffect(() => {
         <div className="tp-audio-thumb" style={{ left: `${pct}%` }} />
       </div>
       <span className="tp-audio-time">{fmt(duration)}</span>
+
+      {/* ── Speed Control ── */}
+      <SpeedControl speed={speed} onChange={setSpeed} />
     </div>
   );
 }
@@ -218,6 +269,80 @@ function AudioModal({ onPlay }) {
   );
 }
 
+// ── Font Size Control ──
+const FONT_SIZES = ['small', 'medium', 'large'];
+const FONT_LABELS = { small: 'S', medium: 'M', large: 'L' };
+const FONT_TITLES = { small: 'Small', medium: 'Medium', large: 'Large' };
+
+function FontSizeControl({ fontSize, onChange }) {
+  return (
+    <div className="tp-fontsize-wrap" title="Text size">
+      <span className="tp-fontsize-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="4 7 4 4 20 4 20 7"/>
+          <line x1="9" y1="20" x2="15" y2="20"/>
+          <line x1="12" y1="4" x2="12" y2="20"/>
+        </svg>
+      </span>
+      {FONT_SIZES.map(size => (
+        <button
+          key={size}
+          className={`tp-fontsize-btn ${fontSize === size ? 'active' : ''}`}
+          onClick={() => onChange(size)}
+          title={FONT_TITLES[size]}
+        >
+          {FONT_LABELS[size]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Fullscreen Button ──
+function FullscreenButton() {
+  const [isFs, setIsFs] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsFs(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  const toggle = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  return (
+    <button
+      className="tp-btn-icon"
+      onClick={toggle}
+      title={isFs ? 'Exit fullscreen' : 'Fullscreen'}
+    >
+      {isFs ? (
+        // Compress icon
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="4 14 10 14 10 20"/>
+          <polyline points="20 10 14 10 14 4"/>
+          <line x1="10" y1="14" x2="3" y2="21"/>
+          <line x1="21" y1="3" x2="14" y2="10"/>
+        </svg>
+      ) : (
+        // Expand icon
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="15 3 21 3 21 9"/>
+          <polyline points="9 21 3 21 3 15"/>
+          <line x1="21" y1="3" x2="14" y2="10"/>
+          <line x1="3" y1="21" x2="10" y2="14"/>
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export default function TestPage() {
   const { id } = useParams();
   const [testData,        setTestData]        = useState(null);
@@ -237,9 +362,12 @@ export default function TestPage() {
   const [selectedText,    setSelectedText]    = useState('');
   const [attemptId,       setAttemptId]       = useState(null);
   const [audioTime,       setAudioTime]       = useState(0);
-  // ── Audio modal states ──
   const [showAudioModal,  setShowAudioModal]  = useState(false);
   const [audioStarted,    setAudioStarted]    = useState(false);
+
+  // ── NEW: font size state ──
+  const [fontSize, setFontSize] = useState('medium');
+
   const passageRef = useRef(null);
 
   useEffect(() => {
@@ -344,7 +472,6 @@ export default function TestPage() {
 
   const goBack = () => { window.location.href = DASHBOARD_URL; };
 
-  // ── Start Test bosganda: listening bo'lsa modal, aks holda to'g'ridan boshlash ──
   const handleStartTest = () => {
     setStarted(true);
     setStartTime(Date.now());
@@ -358,7 +485,6 @@ export default function TestPage() {
     }
   };
 
-  // ── Modal "Play" bosganda ──
   const handleAudioModalPlay = () => {
     setShowAudioModal(false);
     setAudioStarted(true);
@@ -478,10 +604,14 @@ export default function TestPage() {
 
         <div className="tp-header-center">
           <span className="tp-test-name">{testData.title}</span>
-          {/* Listening + audioStarted + audio bor bo'lsa — player o'rtada */}
-{isListening && audioStarted && !submitted && currentAudioUrl ? (
-  <AudioPlayer key={currentAudioUrl} audioUrl={currentAudioUrl} onTimeUpdate={setAudioTime} autoPlay={audioStarted} />
-) : (
+          {isListening && audioStarted && !submitted && currentAudioUrl ? (
+            <AudioPlayer
+              key={currentAudioUrl}
+              audioUrl={currentAudioUrl}
+              onTimeUpdate={setAudioTime}
+              autoPlay={audioStarted}
+            />
+          ) : (
             <>
               <div className="tp-progress-bar">
                 <div className="tp-progress-fill" style={{ width: `${progress}%` }} />
@@ -491,34 +621,45 @@ export default function TestPage() {
           )}
         </div>
 
-        <div className={`tp-timer ${isLow ? 'low' : ''}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          {formatTime(timeLeft)}
-        </div>
+        {/* ── RIGHT SIDE CONTROLS ── */}
+        <div className="tp-header-right">
+          {/* Font size — faqat test boshlanganda va submit qilinmaganda */}
+          {started && !submitted && (
+            <FontSizeControl fontSize={fontSize} onChange={setFontSize} />
+          )}
 
-        {!started ? (
-          <button className="tp-btn-start" onClick={handleStartTest}>
-            Start Test
-          </button>
-        ) : !submitted ? (
-          <button className="tp-btn-submit" onClick={() => handleSubmit(answers)}>Submit</button>
-        ) : null}
+          {/* Fullscreen */}
+          <FullscreenButton />
 
-        {!submitted && (
-          <button
-            className={`tp-btn-note ${showNotePanel ? 'active' : ''}`}
-            onClick={() => setShowNotePanel(v => !v)}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          <div className={`tp-timer ${isLow ? 'low' : ''}`}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
             </svg>
-            {highlights.some(h => h.note) && <span className="tp-note-badge" />}
-          </button>
-        )}
+            {formatTime(timeLeft)}
+          </div>
+
+          {!started ? (
+            <button className="tp-btn-start" onClick={handleStartTest}>
+              Start Test
+            </button>
+          ) : !submitted ? (
+            <button className="tp-btn-submit" onClick={() => handleSubmit(answers)}>Submit</button>
+          ) : null}
+
+          {!submitted && (
+            <button
+              className={`tp-btn-note ${showNotePanel ? 'active' : ''}`}
+              onClick={() => setShowNotePanel(v => !v)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              {highlights.some(h => h.note) && <span className="tp-note-badge" />}
+            </button>
+          )}
+        </div>
       </header>
 
       {/* ── RESULT yoki TEST ── */}
@@ -575,43 +716,45 @@ export default function TestPage() {
               <div className="tp-part-badge">
                 {isListening && '🎧 '}Part {part.part_number}
               </div>
-<p className="tp-instruction">
-  {renderWithHighlights(part.instruction, highlights)}
-</p>
+              <p className="tp-instruction">
+                {renderWithHighlights(part.instruction, highlights)}
+              </p>
             </div>
-            <div className="tp-passage-card">
-  {isListeningMap ? (
-    <ListeningMapRenderer
-      part={part} answers={answers} onAnswer={handleAnswer}
-      submitted={submitted} highlights={highlights}
-    />
-  ) : isListeningMatching ? (
-    <ListeningMatchingRenderer
-      part={part} answers={answers} onAnswer={handleAnswer}
-      submitted={submitted} highlights={highlights}
-    />
-  ) : isListeningFITB ? (
-  <ListeningFITBRenderer
-    part={part} answers={answers} onAnswer={handleAnswer}
-    submitted={submitted} highlights={highlights}
-  />
-) : isListeningMCQ ? (
-  <ListeningMCQRenderer
-    part={part} answers={answers} onAnswer={handleAnswer}
-    submitted={submitted} highlights={highlights}
-    audioTime={audioTime}
-  />
-) : isMatching ? (
-  <MatchingRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
-) : isHeadingMatch ? (
-  <HeadingMatchRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
-) : isReadingMCQ ? (
-  <ReadingMCQRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
-) : isReadingMixed ? (
-  <ReadingMixedRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
-) : (
-  <PassageRenderer passage={part.passage} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
-)}
+
+            {/* font-size class tp-passage-card ga beriladi */}
+            <div className={`tp-passage-card tp-fs-${fontSize}`}>
+              {isListeningMap ? (
+                <ListeningMapRenderer
+                  part={part} answers={answers} onAnswer={handleAnswer}
+                  submitted={submitted} highlights={highlights}
+                />
+              ) : isListeningMatching ? (
+                <ListeningMatchingRenderer
+                  part={part} answers={answers} onAnswer={handleAnswer}
+                  submitted={submitted} highlights={highlights}
+                />
+              ) : isListeningFITB ? (
+                <ListeningFITBRenderer
+                  part={part} answers={answers} onAnswer={handleAnswer}
+                  submitted={submitted} highlights={highlights}
+                />
+              ) : isListeningMCQ ? (
+                <ListeningMCQRenderer
+                  part={part} answers={answers} onAnswer={handleAnswer}
+                  submitted={submitted} highlights={highlights}
+                  audioTime={audioTime}
+                />
+              ) : isMatching ? (
+                <MatchingRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+              ) : isHeadingMatch ? (
+                <HeadingMatchRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+              ) : isReadingMCQ ? (
+                <ReadingMCQRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+              ) : isReadingMixed ? (
+                <ReadingMixedRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+              ) : (
+                <PassageRenderer passage={part.passage} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+              )}
             </div>
           </main>
 

@@ -384,3 +384,199 @@
 .tp-audio-modal-play-btn:hover {
   opacity: 0.85;
 }
+
+/* ─────────────────────────────────────────────────
+   TestPage.css — ADDITIONS (mavjud faylning oxiriga qo'shing)
+   Qo'shilgan: fullscreen btn, font size control, audio speed
+───────────────────────────────────────────────── */
+
+/* ── Header right group ── */
+.tp-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Generic icon button (fullscreen) ── */
+.tp-btn-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  color: #78716c;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.tp-btn-icon:hover {
+  background: #f5f5f4;
+  color: #1c1917;
+  border-color: #d6d3d1;
+}
+
+/* ── Font size control ── */
+.tp-fontsize-wrap {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  background: #f5f5f4;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  padding: 3px 4px;
+  flex-shrink: 0;
+}
+.tp-fontsize-label {
+  display: flex;
+  align-items: center;
+  color: #a8a29e;
+  padding: 0 4px 0 2px;
+  border-right: 1px solid #e7e5e4;
+  margin-right: 3px;
+}
+.tp-fontsize-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  color: #78716c;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tp-fontsize-btn:hover {
+  background: #e7e5e4;
+  color: #1c1917;
+}
+.tp-fontsize-btn.active {
+  background: #fff;
+  color: #2caa9a;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* ── Font size classes on tp-passage-card ── */
+.tp-fs-small  .passage,
+.tp-fs-small  .p3-para-text,
+.tp-fs-small  .p4-passage-text,
+.tp-fs-small  .p5-passage-text,
+.tp-fs-small  .lfitb-passage,
+.tp-fs-small  .matching-opt-text,
+.tp-fs-small  .lmatch-opt-text,
+.tp-fs-small  .lmap-q-text,
+.tp-fs-small  .p5-summary-text {
+  font-size: 16px !important;
+  line-height: 2.0 !important;
+}
+
+.tp-fs-medium .passage,
+.tp-fs-medium .p3-para-text,
+.tp-fs-medium .p4-passage-text,
+.tp-fs-medium .p5-passage-text,
+.tp-fs-medium .lfitb-passage,
+.tp-fs-medium .matching-opt-text,
+.tp-fs-medium .lmatch-opt-text,
+.tp-fs-medium .lmap-q-text,
+.tp-fs-medium .p5-summary-text {
+  font-size: 20px !important;
+  line-height: 2.2 !important;
+}
+
+.tp-fs-large  .passage,
+.tp-fs-large  .p3-para-text,
+.tp-fs-large  .p4-passage-text,
+.tp-fs-large  .p5-passage-text,
+.tp-fs-large  .lfitb-passage,
+.tp-fs-large  .matching-opt-text,
+.tp-fs-large  .lmatch-opt-text,
+.tp-fs-large  .lmap-q-text,
+.tp-fs-large  .p5-summary-text {
+  font-size: 24px !important;
+  line-height: 2.4 !important;
+}
+
+/* Question text ham o'lchami bilan birga o'zgarsin */
+.tp-fs-small .lmcq-q-text,
+.tp-fs-small .p4-q-text,
+.tp-fs-small .p5-mcq-text,
+.tp-fs-small .matching-q-text,
+.tp-fs-small .lmatch-sp-label {
+  font-size: 13px !important;
+}
+.tp-fs-large .lmcq-q-text,
+.tp-fs-large .p4-q-text,
+.tp-fs-large .p5-mcq-text,
+.tp-fs-large .matching-q-text,
+.tp-fs-large .lmatch-sp-label {
+  font-size: 16px !important;
+}
+
+/* ── Audio speed control ── */
+.tp-speed-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.tp-speed-btn {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #a7f3e0;
+  border-radius: 7px;
+  background: #f0fdf9;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d8a7c;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tp-speed-btn:hover {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+}
+.tp-speed-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1c1917;
+  border-radius: 10px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 9999;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  min-width: 72px;
+}
+.tp-speed-option {
+  width: 100%;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e7e5e4;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
+  text-align: center;
+}
+.tp-speed-option:hover {
+  background: rgba(255,255,255,0.1);
+}
+.tp-speed-option.active {
+  background: #2caa9a;
+  color: #fff;
+  font-weight: 700;
+}
