@@ -624,9 +624,9 @@ export default function TestPage() {
         {/* ── RIGHT SIDE CONTROLS ── */}
         <div className="tp-header-right">
           {/* Font size — faqat test boshlanganda va submit qilinmaganda */}
-          {started && !submitted && (
-            <FontSizeControl fontSize={fontSize} onChange={setFontSize} />
-          )}
+{!submitted && (
+  <FontSizeControl fontSize={fontSize} onChange={setFontSize} />
+)}
 
           {/* Fullscreen */}
           <FullscreenButton />

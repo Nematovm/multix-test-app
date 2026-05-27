@@ -545,7 +545,7 @@
 }
 .tp-speed-dropdown {
   position: absolute;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);   /* bottom o'rniga top */
   left: 50%;
   transform: translateX(-50%);
   background: #1c1917;

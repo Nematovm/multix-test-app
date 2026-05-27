@@ -539,7 +539,7 @@ export default function ResultPanel({ parts, userAnswers, isFullMock, isListenin
       <div className="rp-bottom-actions">
         <button
           className="rp-bot-btn"
-          onClick={() => window.location.href = 'https://multix.uz/Pages/dashboard.html'}
+          onClick={() => window.location.href = 'https://multx.uz/Pages/dashboard.html'}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -548,7 +548,7 @@ export default function ResultPanel({ parts, userAnswers, isFullMock, isListenin
         </button>
         <button
           className="rp-bot-btn"
-          onClick={() => window.location.href = 'https://multix.uz/Pages/dashboard.html'}
+          onClick={() => window.location.href = 'https://multx.uz/Pages/dashboard.html'}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
