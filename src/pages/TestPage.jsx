@@ -192,6 +192,7 @@ function AudioPlayer({ audioUrl, onTimeUpdate, autoPlay }) {
       }, 100);
       return () => clearTimeout(timer);
     }
+    
   }, [autoPlay]);
 
   // Speed o'zgarganda audio elementga ham apply qilish
@@ -383,6 +384,11 @@ export default function TestPage() {
   const [audioTime,       setAudioTime]       = useState(0);
   const [showAudioModal,  setShowAudioModal]  = useState(false);
   const [audioStarted,    setAudioStarted]    = useState(false);
+  // 1. Yangi state lar — mavjud state lar orasiga qo'shing
+  const [recoveryEnabled, setRecoveryEnabled] = useState(false);
+  const [reviewMode,      setReviewMode]      = useState(false); // submit bosildi, sahifada ko'rsatilmoqda
+  const [triesLeft,       setTriesLeft]       = useState(3);
+  const [wrongIds,        setWrongIds]        = useState([]); // xato savol IDlari
 
   // ── NEW: font size state ──
   const [fontSize, setFontSize] = useState('medium');
@@ -426,6 +432,7 @@ export default function TestPage() {
         }
         const data = await res.json();
         setTestData(data);
+        setRecoveryEnabled(!!data.recovery_enabled);
         setTimeLeft((data.duration || 20) * 60);
       } catch (err) {
         setError(err.message);
@@ -509,35 +516,149 @@ export default function TestPage() {
     setAudioStarted(true);
   };
 
-  const handleSubmit = useCallback(async (currentAnswers) => {
-    const finalAnswers = currentAnswers || answers;
-    setSubmitted(true);
-    if (!testData) return;
-    const { correct, total } = calcScore(testData.parts, finalAnswers);
-    const percent   = total > 0 ? Math.round((correct / total) * 100 * 10) / 10 : 0;
-    const timeSpent = startTime ? Math.round((Date.now() - startTime) / 1000) : null;
-    const token     = localStorage.getItem('cp_token');
-    if (!token) return;
-    try {
-      const res = await fetch(`${API_BASE}/attempts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          test_id:            parseInt(id),
-          test_name:          testData.title || testData.name || 'Test',
-          test_section:       testData.section || 'reading',
-          score:              correct,
-          total:              total,
-          percent:            percent,
-          time_spent_seconds: timeSpent,
-          user_answers:       finalAnswers,
-        }),
+
+// 4. handleSubmit dan OLDIN bu yordamchi funksiyani qo'shing:
+function getWrongIds(parts, userAnswers) {
+  const wrong = [];
+  parts.forEach(part => {
+    if (part.type === 'reading-mixed') {
+      (part.question_groups || []).forEach(group => {
+        if (group.type === 'fitb') {
+          (group.questions || []).forEach(q => {
+            const u = (userAnswers[q.id] || '').toLowerCase().trim();
+            if (u !== (q.correctAnswer || '').toLowerCase().trim()) wrong.push(q.id);
+          });
+        }
+        if (group.type === 'mcq') {
+          (group.questions || []).forEach(q => {
+            const u = (userAnswers[q.id] || '').toUpperCase();
+            if (u !== (part.answers?.[q.id] || '').toUpperCase()) wrong.push(q.id);
+          });
+        }
       });
-      if (res.ok) { const data = await res.json(); setAttemptId(data.id); }
-    } catch (err) {
-      console.error('Attempt saqlashda xato:', err);
+      return;
     }
-  }, [answers, testData, id, startTime]);
+    if (part.type === 'reading-mcq') {
+      const groups = part.question_groups || [{ questions: part.questions || [] }];
+      groups.forEach(g => (g.questions || []).forEach(q => {
+        const u = (userAnswers[q.id] || '').toUpperCase();
+        if (u !== (part.answers?.[q.id] || '').toUpperCase()) wrong.push(q.id);
+      }));
+      return;
+    }
+    if (part.type === 'matching') {
+      (part.questions || []).forEach(q => {
+        const u = (userAnswers[q.id] || '').toUpperCase();
+        if (u !== (part.answers?.[q.id] || '').toUpperCase()) wrong.push(q.id);
+      });
+      return;
+    }
+    if (part.type === 'heading-match') {
+      (part.paragraphs || []).forEach(p => {
+        const u = (userAnswers[p.id] || '').toUpperCase();
+        if (u !== (part.answers?.[p.id] || '').toUpperCase()) wrong.push(p.id);
+      });
+      return;
+    }
+    if (part.type === 'listening-mcq') {
+      (part.questions || []).forEach(q => {
+        const u = (userAnswers[q.id] || '').toUpperCase();
+        if (u !== (part.answers?.[q.id] || '').toUpperCase()) wrong.push(q.id);
+      });
+      return;
+    }
+    if (part.type === 'listening-fitb') {
+      Object.entries(part.answers || {}).forEach(([id, corr]) => {
+        const u = (userAnswers[id] || '').toLowerCase().trim();
+        if (u !== corr.toLowerCase().trim()) wrong.push(id);
+      });
+      return;
+    }
+    if (part.type === 'listening-matching') {
+      (part.speakers || []).forEach(sp => {
+        const u = (userAnswers[sp.id] || '').toUpperCase();
+        if (u !== (part.answers?.[sp.id] || '').toUpperCase()) wrong.push(sp.id);
+      });
+      return;
+    }
+    if (part.type === 'listening-map') {
+      (part.questions || []).forEach(q => {
+        const u = (userAnswers[q.id] || '').toUpperCase();
+        if (u !== (part.answers?.[q.id] || '').toUpperCase()) wrong.push(q.id);
+      });
+      return;
+    }
+    if (part.answers) {
+      Object.entries(part.answers).forEach(([id, corr]) => {
+        const u = (userAnswers[id] || '').toLowerCase().trim();
+        if (u !== corr.toLowerCase().trim()) wrong.push(id);
+      });
+    }
+  });
+  return wrong;
+}
+
+// 7. handleRetry funksiyasini qo'shing (handleSubmit dan keyin):
+const handleRetry = useCallback(() => {
+  // Faqat xato savollarni tozalash, to'g'rilarini saqlash
+  setAnswers(prev => {
+    const next = { ...prev };
+    wrongIds.forEach(id => { next[id] = ''; });
+    return next;
+  });
+  setReviewMode(false);
+  // Birinchi partga o'tish
+  setCurrentPart(0);
+}, [wrongIds]);
+
+// 3. handleSubmit ni to'liq almashtiring:
+const handleSubmit = useCallback(async (currentAnswers) => {
+  const finalAnswers = currentAnswers || answers;
+  if (!testData) return;
+
+  const { correct, total } = calcScore(testData.parts, finalAnswers);
+  const percent   = total > 0 ? Math.round((correct / total) * 100 * 10) / 10 : 0;
+  const timeSpent = startTime ? Math.round((Date.now() - startTime) / 1000) : null;
+  const token     = localStorage.getItem('cp_token');
+
+  // Xato savol ID larini aniqlash
+  const currentWrongIds = getWrongIds(testData.parts, finalAnswers);
+
+  if (recoveryEnabled && triesLeft > 1 && currentWrongIds.length > 0) {
+    // Recovery mode: sahifada qol, xato/to'g'rini ko'rsat
+    setAnswers(finalAnswers);
+    setWrongIds(currentWrongIds);
+    setReviewMode(true);
+    setTriesLeft(t => t - 1);
+    // Attempt saqlamaymiz — faqat oxirgi submitda saqlaymiz
+    return;
+  }
+
+  // Oxirgi urinish yoki hammasi to'g'ri yoki recovery yoq
+  setSubmitted(true);
+  setAnswers(finalAnswers);
+
+  if (!token) return;
+  try {
+    const res = await fetch(`${API_BASE}/attempts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        test_id:            parseInt(id),
+        test_name:          testData.title || testData.name || 'Test',
+        test_section:       testData.section || 'reading',
+        score:              correct,
+        total:              total,
+        percent:            percent,
+        time_spent_seconds: timeSpent,
+        user_answers:       finalAnswers,
+      }),
+    });
+    if (res.ok) { const data = await res.json(); setAttemptId(data.id); }
+  } catch (err) {
+    console.error('Attempt saqlashda xato:', err);
+  }
+}, [answers, testData, id, startTime, recoveryEnabled, triesLeft]);
 
   if (loading) return (
     <div className="tp-loading">
@@ -657,14 +778,23 @@ export default function TestPage() {
             </svg>
             {formatTime(timeLeft)}
           </div>
+{recoveryEnabled && reviewMode && (
+  <div className="tp-tries-badge">
+    {triesLeft} urinish qoldi
+  </div>
+)}
 
           {!started ? (
             <button className="tp-btn-start" onClick={handleStartTest}>
               Start Test
             </button>
-          ) : !submitted ? (
-            <button className="tp-btn-submit" onClick={() => handleSubmit(answers)}>Submit</button>
-          ) : null}
+) : reviewMode && !submitted ? (
+  <button className="tp-btn-retry" onClick={handleRetry}>
+    Retry ({triesLeft} urinish qoldi)
+  </button>
+) : !submitted && !reviewMode ? (
+  <button className="tp-btn-submit" onClick={() => handleSubmit(answers)}>Submit</button>
+) : null}
 
           {!submitted && (
             <button
@@ -682,34 +812,42 @@ export default function TestPage() {
       </header>
 
       {/* ── RESULT yoki TEST ── */}
-      {submitted ? (
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          <ResultPanel
-            parts={parts}
-            userAnswers={answers}
-            testId={parseInt(id)}
-            attemptId={attemptId}
-            isListening={isListening}
-          />
-        </div>
-      ) : (
-        <div className="tp-body">
-          <aside className="tp-sidebar">
-            <div className="tp-sidebar-label">Parts</div>
-            {parts.map((p, i) => {
-              const keys = getPartAnswerKeys(p);
-              const done = keys.filter(k => answers[k]).length;
-              return (
-                <button
-                  key={i}
-                  className={`tp-part-btn ${currentPart === i ? 'active' : ''}`}
-                  onClick={() => setCurrentPart(i)}
-                >
-                  <span className="tp-part-num">Part {p.part_number}</span>
-                  <span className="tp-part-progress">{done}/{keys.length}</span>
-                </button>
-              );
-            })}
+{submitted ? (
+  <div style={{ flex: 1, overflowY: 'auto' }}>
+    <ResultPanel
+      parts={parts}
+      userAnswers={answers}
+      testId={parseInt(id)}
+      attemptId={attemptId}
+      isListening={isListening}
+    />
+  </div>
+) : (
+  <div className="tp-body">
+    <aside className="tp-sidebar">
+      <div className="tp-sidebar-label">Parts</div>
+      {parts.map((p, i) => {
+        const keys = getPartAnswerKeys(p);
+        const done = keys.filter(k => answers[k]).length;
+        // reviewMode da xato savollar qizil belgilansin
+        const wrongInPart = reviewMode ? keys.filter(k => wrongIds.includes(k)).length : 0;
+        return (
+          <button
+            key={i}
+            className={`tp-part-btn ${currentPart === i ? 'active' : ''}`}
+            onClick={() => setCurrentPart(i)}
+          >
+            <span className="tp-part-num">Part {p.part_number}</span>
+            <span className="tp-part-progress">
+              {reviewMode ? (
+                wrongInPart > 0
+                  ? <span style={{ color: '#dc2626' }}>{wrongInPart} xato</span>
+                  : <span style={{ color: '#0f6e56' }}>✓</span>
+              ) : `${done}/${keys.length}`}
+            </span>
+          </button>
+        );
+      })}
             {highlights.length > 0 && (
               <div className="tp-highlight-list">
                 <div className="tp-sidebar-label" style={{ marginTop: 20 }}>Highlights</div>
@@ -730,7 +868,19 @@ export default function TestPage() {
             )}
           </aside>
 
-          <main className="tp-main" onMouseUp={handleMouseUp} ref={passageRef}>
+    <main className="tp-main" onMouseUp={handleMouseUp} ref={passageRef}>
+      {/* reviewMode banneri */}
+      {reviewMode && (
+        <div className="tp-review-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          Yashil — to'g'ri, qizil — xato. Xatolaringizni to'g'irlang va Retry bosing.
+          <strong style={{ marginLeft: 8, color: '#dc2626' }}>{wrongIds.length} ta xato</strong>
+        </div>
+      )}
             <div className="tp-part-header">
               <div className="tp-part-badge">
                 {isListening && '🎧 '}Part {part.part_number}
@@ -745,34 +895,34 @@ export default function TestPage() {
               {isListeningMap ? (
                 <ListeningMapRenderer
                   part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted} highlights={highlights}
+                  submitted={submitted || reviewMode} highlights={highlights}
                 />
               ) : isListeningMatching ? (
                 <ListeningMatchingRenderer
                   part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted} highlights={highlights}
+                  submitted={submitted || reviewMode} highlights={highlights}
                 />
               ) : isListeningFITB ? (
                 <ListeningFITBRenderer
                   part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted} highlights={highlights}
+                  submitted={submitted || reviewMode} highlights={highlights}
                 />
               ) : isListeningMCQ ? (
                 <ListeningMCQRenderer
                   part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted} highlights={highlights}
+                  submitted={submitted || reviewMode} highlights={highlights}
                   audioTime={audioTime}
                 />
               ) : isMatching ? (
-                <MatchingRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+                <MatchingRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted || reviewMode} highlights={highlights} />
               ) : isHeadingMatch ? (
-                <HeadingMatchRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+                <HeadingMatchRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted || reviewMode} highlights={highlights} />
               ) : isReadingMCQ ? (
-                <ReadingMCQRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+                <ReadingMCQRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted || reviewMode} highlights={highlights} />
               ) : isReadingMixed ? (
-                <ReadingMixedRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+                <ReadingMixedRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted || reviewMode} highlights={highlights} />
               ) : (
-                <PassageRenderer passage={part.passage} answers={answers} onAnswer={handleAnswer} submitted={submitted} highlights={highlights} />
+                <PassageRenderer passage={part.passage} answers={answers} onAnswer={handleAnswer} submitted={submitted || reviewMode} highlights={highlights} />
               )}
             </div>
           </main>
