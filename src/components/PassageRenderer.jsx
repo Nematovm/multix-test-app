@@ -328,9 +328,9 @@ export function ReadingMCQRenderer({ part, answers, onAnswer, submitted, reviewM
               );
             })}
           </div>
-          {isReviewing && !isAnswerCorrect(q.id) && userAnswer && (
-            <div className="p4-correct-hint">✓ Correct answer: {correct}</div>
-          )}
+{submitted && !isAnswerCorrect(q.id) && userAnswer && (
+  <div className="p4-correct-hint">✓ Correct answer: {correct}</div>
+)}
         </div>
       );
     }
@@ -375,7 +375,7 @@ export function ReadingMCQRenderer({ part, answers, onAnswer, submitted, reviewM
               );
             })}
           </div>
-          {isReviewing && !isAnswerCorrect(q.id) && userAnswer && (
+          {submitted && !isAnswerCorrect(q.id) && userAnswer && (
             <div className="p4-correct-hint">✓ Correct answer: {correct}</div>
           )}
         </div>
@@ -477,9 +477,9 @@ export function ReadingMixedRenderer({ part, answers, onAnswer, submitted, revie
                   placeholder={`(${q.number})`}
                   maxLength={30}
                 />
-                {isReviewing && !isFITBCorrect(q.id, correctAnswer) && (
-                  <span className="p5-correct-hint">{correctAnswer}</span>
-                )}
+{submitted && !isFITBCorrect(q.id, correctAnswer) && (
+  <span className="p5-correct-hint">{correctAnswer}</span>
+)}
               </span>
             );
           })}
@@ -524,9 +524,9 @@ export function ReadingMixedRenderer({ part, answers, onAnswer, submitted, revie
             );
           })}
         </div>
-        {isReviewing && !isMCQCorrect(q.id) && userAnswer && (
-          <div className="p5-mcq-hint">✓ Correct answer: {correct}</div>
-        )}
+{submitted && !isMCQCorrect(q.id) && userAnswer && (
+  <div className="p5-mcq-hint">✓ Correct answer: {correct}</div>
+)}
       </div>
     );
   };
@@ -624,9 +624,9 @@ export function ListeningMCQRenderer({ part, answers, onAnswer, submitted, revie
               })}
             </div>
 
-            {isReviewing && !isCorrect(q.id) && userAnswer && (
-              <div className="lmcq-correct-hint">✓ Correct answer: {correct}</div>
-            )}
+{submitted && !isCorrect(q.id) && userAnswer && (  // faqat submitted
+  <div>✓ Correct answer: {correct}</div>
+)}
           </div>
         );
       })}
@@ -685,9 +685,9 @@ export function ListeningFITBRenderer({ part, answers, onAnswer, submitted, revi
                     placeholder={`(${item.number})`}
                     maxLength={30}
                   />
-                  {isReviewing && userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
-                    <span className="correct-hint">{correctAnswer}</span>
-                  )}
+{submitted && userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
+  <span className="correct-hint">{correctAnswer}</span>
+)}
                 </span>
               );
             }
@@ -778,9 +778,9 @@ export function ListeningMatchingRenderer({ part, answers, onAnswer, submitted, 
                       </option>
                     ))}
                   </select>
-                  {isReviewing && userAnswer && !isCorrect(sp.id) && (
-                    <span className="lmatch-correct-hint">✓ {correct}</span>
-                  )}
+{submitted && userAnswer && !isCorrect(sp.id) && (
+  <span className="lmatch-correct-hint">✓ {correct}</span>
+)}
                 </div>
               </div>
             );
@@ -875,9 +875,9 @@ export function ListeningMapRenderer({ part, answers, onAnswer, submitted, revie
                       </option>
                     ))}
                   </select>
-                  {isReviewing && userAnswer && !isCorrect(q.id) && (
-                    <span className="lmap-correct-hint">✓ {correct}</span>
-                  )}
+{submitted && userAnswer && !isCorrect(q.id) && (
+  <span className="lmap-correct-hint">✓ {correct}</span>
+)}
                 </div>
               </div>
             );
