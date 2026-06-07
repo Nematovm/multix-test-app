@@ -792,11 +792,6 @@ const handleAnswer = (qid, val) => {
             </svg>
             {formatTime(timeLeft)}
           </div>
-{recoveryEnabled && reviewMode && (
-  <div className="tp-tries-badge">
-    {triesLeft} urinish qoldi
-  </div>
-)}
 
 {/* Header o'ng tomoni — tugmalar */}
 {!started ? (
@@ -926,38 +921,53 @@ const handleAnswer = (qid, val) => {
 
             {/* font-size class tp-passage-card ga beriladi */}
             <div className={`tp-passage-card tp-fs-${fontSize}`}>
-              {isListeningMap ? (
-                <ListeningMapRenderer
-                  part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted || reviewMode} highlights={highlights}
-                />
-              ) : isListeningMatching ? (
-                <ListeningMatchingRenderer
-                  part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted || reviewMode} highlights={highlights}
-                />
-              ) : isListeningFITB ? (
-                <ListeningFITBRenderer
-                  part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted || reviewMode} highlights={highlights}
-                />
-              ) : isListeningMCQ ? (
-                <ListeningMCQRenderer
-                  part={part} answers={answers} onAnswer={handleAnswer}
-                  submitted={submitted || reviewMode} highlights={highlights}
-                  audioTime={audioTime}
-                />
-              ) : isMatching ? (
-                <MatchingRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted || reviewMode} highlights={highlights} />
-              ) : isHeadingMatch ? (
-                <HeadingMatchRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted || reviewMode} highlights={highlights} />
-              ) : isReadingMCQ ? (
-                <ReadingMCQRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted || reviewMode} highlights={highlights} />
-              ) : isReadingMixed ? (
-                <ReadingMixedRenderer part={part} answers={answers} onAnswer={handleAnswer} submitted={submitted || reviewMode} highlights={highlights} />
-              ) : (
-                <PassageRenderer passage={part.passage} answers={answers} onAnswer={handleAnswer} submitted={submitted || reviewMode} highlights={highlights} />
-              )}
+{isListeningMap ? (
+  <ListeningMapRenderer
+    part={part} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} reviewMode={reviewMode} wrongIds={wrongIds} highlights={highlights}
+  />
+) : isListeningMatching ? (
+  <ListeningMatchingRenderer
+    part={part} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} reviewMode={reviewMode} wrongIds={wrongIds} highlights={highlights}
+  />
+) : isListeningFITB ? (
+  <ListeningFITBRenderer
+    part={part} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} reviewMode={reviewMode} wrongIds={wrongIds} highlights={highlights}
+  />
+) : isListeningMCQ ? (
+  <ListeningMCQRenderer
+    part={part} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} reviewMode={reviewMode} wrongIds={wrongIds} highlights={highlights}
+    audioTime={audioTime}
+  />
+) : isMatching ? (
+  <MatchingRenderer
+    part={part} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} reviewMode={reviewMode} wrongIds={wrongIds} highlights={highlights}
+  />
+) : isHeadingMatch ? (
+  <HeadingMatchRenderer
+    part={part} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} reviewMode={reviewMode} wrongIds={wrongIds} highlights={highlights}
+  />
+) : isReadingMCQ ? (
+  <ReadingMCQRenderer
+    part={part} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} reviewMode={reviewMode} wrongIds={wrongIds} highlights={highlights}
+  />
+) : isReadingMixed ? (
+  <ReadingMixedRenderer
+    part={part} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} reviewMode={reviewMode} wrongIds={wrongIds} highlights={highlights}
+  />
+) : (
+  <PassageRenderer
+    passage={part.passage} answers={answers} onAnswer={handleAnswer}
+    submitted={submitted} reviewMode={reviewMode} wrongIds={wrongIds} highlights={highlights}
+  />
+)}
             </div>
           </main>
 

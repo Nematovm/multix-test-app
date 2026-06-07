@@ -27,7 +27,7 @@ export function renderWithHighlights(content, highlights) {
 }
 
 // ── MATCHING RENDERER ──
-export function MatchingRenderer({ part, answers, onAnswer, submitted, highlights = [] }) {
+export function MatchingRenderer({ part, answers, onAnswer, submitted, reviewMode = false, wrongIds = [], highlights = [] }) {
   const options   = part.options   || [];
   const questions = part.questions || [];
 
@@ -52,9 +52,9 @@ export function MatchingRenderer({ part, answers, onAnswer, submitted, highlight
           const userAnswer = answers[q.id] || '';
           const correct    = part.answers?.[q.id] || '';
           let selectClass  = 'matching-select';
-          if (submitted) {
-            selectClass += userAnswer.toUpperCase() === correct.toUpperCase() ? ' correct' : ' wrong';
-          }
+if (submitted || reviewMode) {
+  selectClass += userAnswer.toUpperCase() === correct.toUpperCase() ? ' correct' : ' wrong';
+}
           return (
             <div key={q.id} className="matching-question-row">
               <div className="matching-q-number">{q.number}</div>
@@ -64,16 +64,16 @@ export function MatchingRenderer({ part, answers, onAnswer, submitted, highlight
                   className={selectClass}
                   value={userAnswer}
                   onChange={e => onAnswer(q.id, e.target.value)}
-                  disabled={submitted}
+                  disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
                 >
                   <option value="">—</option>
                   {options.map(opt => (
                     <option key={opt.key} value={opt.key}>{opt.key}</option>
                   ))}
                 </select>
-                {submitted && userAnswer.toUpperCase() !== correct.toUpperCase() && (
-                  <span className="matching-correct-hint">✓ {correct}</span>
-                )}
+{submitted && userAnswer.toUpperCase() !== correct.toUpperCase() && (
+  <span className="matching-correct-hint">✓ {correct}</span>
+)}
               </div>
             </div>
           );
@@ -124,7 +124,7 @@ export default function PassageRenderer({ passage, answers, onAnswer, submitted,
 }
 
 // ── PART 3: HEADING MATCH RENDERER ──
-export function HeadingMatchRenderer({ part, answers, onAnswer, submitted, highlights = [] }) {
+export function HeadingMatchRenderer({ part, answers, onAnswer, submitted, reviewMode = false, wrongIds = [], highlights = [] }) {
   const [draggedHeading, setDraggedHeading] = React.useState(null);
   const [dragOver, setDragOver]             = React.useState(null);
 
@@ -273,7 +273,7 @@ export function HeadingMatchRenderer({ part, answers, onAnswer, submitted, highl
 }
 
 // ── PART 4: MCQ + TRUE/FALSE/NG RENDERER ──
-export function ReadingMCQRenderer({ part, answers, onAnswer, submitted, highlights = [] }) {
+export function ReadingMCQRenderer({ part, answers, onAnswer, submitted, reviewMode = false, wrongIds = [], highlights = [] }) {
   const passage  = part.passage_text     || '';
   const title    = part.passage_title    || '';
   const subtitle = part.passage_subtitle || '';
@@ -299,18 +299,18 @@ export function ReadingMCQRenderer({ part, answers, onAnswer, submitted, highlig
           <div className="p4-options">
             {(q.options || []).map(opt => {
               let cls = 'p4-option';
-              if (submitted) {
-                if (opt.key.toUpperCase() === correct.toUpperCase()) cls += ' correct';
-                else if (opt.key.toUpperCase() === userAnswer.toUpperCase()) cls += ' wrong';
-              } else if (userAnswer.toUpperCase() === opt.key.toUpperCase()) {
-                cls += ' selected';
-              }
+if (submitted || reviewMode) {
+  if (opt.key.toUpperCase() === correct.toUpperCase()) cls += ' correct';
+  else if (opt.key.toUpperCase() === userAnswer.toUpperCase()) cls += ' wrong';
+} else if (userAnswer.toUpperCase() === opt.key.toUpperCase()) {
+  cls += ' selected';
+}
               return (
                 <button
                   key={opt.key}
                   className={cls}
-                  onClick={() => !submitted && onAnswer(q.id, opt.key)}
-                  disabled={submitted}
+onClick={() => !(submitted || (reviewMode && !wrongIds.includes(q.id))) && onAnswer(q.id, opt.key)}
+disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
                 >
                   <span className="p4-opt-key">{opt.key}</span>
                   <span className="p4-opt-text">{opt.text}</span>
@@ -346,18 +346,16 @@ export function ReadingMCQRenderer({ part, answers, onAnswer, submitted, highlig
               const isUserMatch    = userUp    === optUp || userUp    === optLblUp;
               const isCorrectMatch = correctUp === optUp || correctUp === optLblUp;
               let cls = 'p4-tfng-btn';
-              if (submitted) {
-                if (isCorrectMatch) cls += ' correct';
-                else if (isUserMatch) cls += ' wrong';
-              } else if (isUserMatch) {
-                cls += ' selected';
-              }
+if (submitted || reviewMode) {
+  if (isCorrectMatch) cls += ' correct';
+  else if (isUserMatch) cls += ' wrong';
+}
               return (
                 <button
                   key={opt.key}
                   className={cls}
-                  onClick={() => !submitted && onAnswer(q.id, opt.key)}
-                  disabled={submitted}
+onClick={() => !(submitted || (reviewMode && !wrongIds.includes(q.id))) && onAnswer(q.id, opt.key)}
+disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
                 >
                   {opt.label}
                 </button>
@@ -397,7 +395,7 @@ export function ReadingMCQRenderer({ part, answers, onAnswer, submitted, highlig
 }
 
 // ── PART 5: READING MIXED (FITB + MCQ) RENDERER ──
-export function ReadingMixedRenderer({ part, answers, onAnswer, submitted, highlights = [] }) {
+export function ReadingMixedRenderer({ part, answers, onAnswer, submitted, reviewMode = false, wrongIds = [], highlights = [] }) {
   const title    = part.passage_title    || '';
   const subtitle = part.passage_subtitle || '';
   const passage  = part.passage_text     || '';
@@ -445,10 +443,11 @@ export function ReadingMixedRenderer({ part, answers, onAnswer, submitted, highl
             if (!q) return null;
             const userAnswer    = answers[q.id] || '';
             const correctAnswer = q.correctAnswer || '';
-            let cls = 'p5-inline-input';
-            if (submitted) {
-              cls += isFITBCorrect(q.id, correctAnswer) ? ' correct' : ' wrong';
-            }
+let cls = 'p5-inline-input';
+const isWrong = wrongIds.includes(q.id);
+if (submitted || reviewMode) {
+  cls += isFITBCorrect(q.id, correctAnswer) ? ' correct' : ' wrong';
+}
             return (
               <span key={i} className="p5-input-wrap">
                 <span className="p5-q-number">{q.number}</span>
@@ -460,13 +459,13 @@ export function ReadingMixedRenderer({ part, answers, onAnswer, submitted, highl
                     const val = e.target.value;
                     if (!val.includes(' ')) onAnswer(q.id, val);
                   }}
-                  disabled={submitted}
+                  disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
                   placeholder={`(${q.number})`}
                   maxLength={30}
                 />
-                {submitted && !isFITBCorrect(q.id, correctAnswer) && (
-                  <span className="p5-correct-hint">{correctAnswer}</span>
-                )}
+{submitted && !isFITBCorrect(q.id, correctAnswer) && (
+  <span className="p5-correct-hint">{correctAnswer}</span>
+)}
               </span>
             );
           })}
@@ -486,19 +485,19 @@ export function ReadingMixedRenderer({ part, answers, onAnswer, submitted, highl
         </div>
         <div className="p5-mcq-options">
           {(q.options || []).map(opt => {
-            let cls = 'p5-mcq-option';
-            if (submitted) {
-              if (opt.key.toUpperCase() === correct.toUpperCase()) cls += ' correct';
-              else if (opt.key.toUpperCase() === userAnswer.toUpperCase()) cls += ' wrong';
-            } else if (userAnswer.toUpperCase() === opt.key.toUpperCase()) {
-              cls += ' selected';
-            }
+let cls = 'p5-mcq-option';
+if (submitted || reviewMode) {
+  if (opt.key.toUpperCase() === correct.toUpperCase()) cls += ' correct';
+  else if (opt.key.toUpperCase() === userAnswer.toUpperCase()) cls += ' wrong';
+} else if (userAnswer.toUpperCase() === opt.key.toUpperCase()) {
+  cls += ' selected';
+}
             return (
               <button
                 key={opt.key}
                 className={cls}
-                onClick={() => !submitted && onAnswer(q.id, opt.key)}
-                disabled={submitted}
+onClick={() => !(submitted || (reviewMode && !wrongIds.includes(q.id))) && onAnswer(q.id, opt.key)}
+disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
               >
                 <span className="p5-opt-key">{opt.key}</span>
                 <span className="p5-opt-text">{opt.text}</span>
@@ -506,9 +505,9 @@ export function ReadingMixedRenderer({ part, answers, onAnswer, submitted, highl
             );
           })}
         </div>
-        {submitted && !isMCQCorrect(q.id) && (
-          <div className="p5-mcq-hint">✓ Correct answer: {correct}</div>
-        )}
+{submitted && !isMCQCorrect(q.id) && (
+  <div className="p5-mcq-hint">✓ Correct answer: {correct}</div>
+)}
       </div>
     );
   };
