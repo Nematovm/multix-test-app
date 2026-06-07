@@ -459,7 +459,7 @@ export default function TestPage() {
   }, []);
 
   const handleMouseUp = useCallback((e) => {
-    if (submitted) return;
+    if (submitted || reviewMode) return; // ← reviewMode qo'shing
     if (e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION') return;
     if (e.target.closest('button')) return;
     setTimeout(() => {
@@ -472,7 +472,7 @@ export default function TestPage() {
       setToolbarPos({ x: rect.left + rect.width / 2, y: rect.top - 10 });
       setShowToolbar(true);
     }, 10);
-  }, [submitted]);
+  }, [submitted, reviewMode]);
 
   const applyHighlight = (color) => {
     if (!selectedText) return;
@@ -598,19 +598,30 @@ function getWrongIds(parts, userAnswers) {
   return wrong;
 }
 
-// 7. handleRetry funksiyasini qo'shing (handleSubmit dan keyin):
-// handleRetry ni to'liq almashtiring:
+// handleRetry useCallback dependency — getPartAnswerKeys ni ichiga ko'chiring
 const handleRetry = useCallback(() => {
-  // Xato savollar javoblarini tozalash, to'g'rilarini saqlash
   setAnswers(prev => {
     const next = { ...prev };
     wrongIds.forEach(id => { delete next[id]; });
     return next;
   });
   setReviewMode(false);
-  // Birinchi xato partga o'tish
+  // getPartAnswerKeys ni to'g'ridan chaqirib bo'lmaydi, shuning uchun inline:
   const firstWrongPart = testData.parts.findIndex(p => {
-    const keys = getPartAnswerKeys(p);
+    const keys = (() => {
+      if (p.type === 'matching') return (p.questions || []).map(q => q.id);
+      if (p.type === 'heading-match') return (p.paragraphs || []).map(p => p.id);
+      if (p.type === 'listening-mcq') return (p.questions || []).map(q => q.id);
+      if (p.type === 'listening-fitb') return Object.keys(p.answers || {});
+      if (p.type === 'listening-matching') return (p.speakers || []).map(s => s.id);
+      if (p.type === 'listening-map') return (p.questions || []).map(q => q.id);
+      if (p.type === 'reading-mcq') {
+        if (p.question_groups) return p.question_groups.flatMap(g => (g.questions || []).map(q => q.id));
+        return (p.questions || []).map(q => q.id);
+      }
+      if (p.type === 'reading-mixed') return (p.question_groups || []).flatMap(g => (g.questions || []).map(q => q.id));
+      return p.answers ? Object.keys(p.answers) : [];
+    })();
     return keys.some(k => wrongIds.includes(k));
   });
   setCurrentPart(firstWrongPart !== -1 ? firstWrongPart : 0);
@@ -631,10 +642,23 @@ const handleSubmit = useCallback(async (currentAnswers) => {
     setReviewMode(true);
     setTriesLeft(t => t - 1);
     // Birinchi xato partga o'tish
-    const firstWrongPart = testData.parts.findIndex(p => {
-      const keys = getPartAnswerKeys(p);
-      return keys.some(k => currentWrongIds.includes(k));
-    });
+const firstWrongPart = testData.parts.findIndex(p => {
+  const keys = (() => {
+    if (p.type === 'matching') return (p.questions || []).map(q => q.id);
+    if (p.type === 'heading-match') return (p.paragraphs || []).map(para => para.id);
+    if (p.type === 'listening-mcq') return (p.questions || []).map(q => q.id);
+    if (p.type === 'listening-fitb') return Object.keys(p.answers || {});
+    if (p.type === 'listening-matching') return (p.speakers || []).map(s => s.id);
+    if (p.type === 'listening-map') return (p.questions || []).map(q => q.id);
+    if (p.type === 'reading-mcq') {
+      if (p.question_groups) return p.question_groups.flatMap(g => (g.questions || []).map(q => q.id));
+      return (p.questions || []).map(q => q.id);
+    }
+    if (p.type === 'reading-mixed') return (p.question_groups || []).flatMap(g => (g.questions || []).map(q => q.id));
+    return p.answers ? Object.keys(p.answers) : [];
+  })();
+  return keys.some(k => currentWrongIds.includes(k));
+});
     if (firstWrongPart !== -1) setCurrentPart(firstWrongPart);
     return; // <-- result pagega O'TMASIN
   }

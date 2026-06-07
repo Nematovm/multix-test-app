@@ -1,8 +1,6 @@
 import React from 'react';
 import './PassageRenderer.css';
 
-
-// ── Shared highlight helper ──
 export function renderWithHighlights(content, highlights) {
   if (!highlights || !highlights.length) return content;
   let parts = [{ type: 'text', content }];
@@ -51,10 +49,14 @@ export function MatchingRenderer({ part, answers, onAnswer, submitted, reviewMod
         {questions.map(q => {
           const userAnswer = answers[q.id] || '';
           const correct    = part.answers?.[q.id] || '';
+          const isLocked   = reviewMode && !wrongIds.includes(q.id);
           let selectClass  = 'matching-select';
-if (submitted || reviewMode) {
-  selectClass += userAnswer.toUpperCase() === correct.toUpperCase() ? ' correct' : ' wrong';
-}
+          if (submitted || reviewMode) {
+            const hasAnswer = !!userAnswer;
+            if (hasAnswer) {
+              selectClass += userAnswer.toUpperCase() === correct.toUpperCase() ? ' correct' : ' wrong';
+            }
+          }
           return (
             <div key={q.id} className="matching-question-row">
               <div className="matching-q-number">{q.number}</div>
@@ -64,16 +66,16 @@ if (submitted || reviewMode) {
                   className={selectClass}
                   value={userAnswer}
                   onChange={e => onAnswer(q.id, e.target.value)}
-                  disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
+                  disabled={submitted || isLocked}
                 >
                   <option value="">—</option>
                   {options.map(opt => (
                     <option key={opt.key} value={opt.key}>{opt.key}</option>
                   ))}
                 </select>
-{submitted && userAnswer.toUpperCase() !== correct.toUpperCase() && (
-  <span className="matching-correct-hint">✓ {correct}</span>
-)}
+                {(submitted || reviewMode) && userAnswer && userAnswer.toUpperCase() !== correct.toUpperCase() && (
+                  <span className="matching-correct-hint">✓ {correct}</span>
+                )}
               </div>
             </div>
           );
@@ -84,7 +86,7 @@ if (submitted || reviewMode) {
 }
 
 // ── FITB RENDERER ──
-export default function PassageRenderer({ passage, answers, onAnswer, submitted, highlights = [] }) {
+export default function PassageRenderer({ passage, answers, onAnswer, submitted, reviewMode = false, wrongIds = [], highlights = [] }) {
   return (
     <div className="passage">
       {passage.map((item, index) => {
@@ -94,8 +96,9 @@ export default function PassageRenderer({ passage, answers, onAnswer, submitted,
         if (item.type === 'input') {
           const userAnswer    = answers[item.id] || '';
           const correctAnswer = item.correctAnswer || '';
+          const isLocked      = reviewMode && !wrongIds.includes(item.id);
           let inputClass = 'inline-input';
-          if (submitted) {
+          if (submitted || reviewMode) {
             inputClass += userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()
               ? ' correct' : ' wrong';
           }
@@ -107,11 +110,11 @@ export default function PassageRenderer({ passage, answers, onAnswer, submitted,
                 className={inputClass}
                 value={userAnswer}
                 onChange={e => { const val = e.target.value; if (!val.includes(' ')) onAnswer(item.id, val); }}
-                disabled={submitted}
+                disabled={submitted || isLocked}
                 placeholder={`(${item.number})`}
                 maxLength={30}
               />
-              {submitted && userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
+              {(submitted || reviewMode) && userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
                 <span className="correct-hint">{correctAnswer}</span>
               )}
             </span>
@@ -136,7 +139,6 @@ export function HeadingMatchRenderer({ part, answers, onAnswer, submitted, revie
   const handleChipDragStart = (e, key) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', key);
-    // setTimeout — React state update drag bilan conflict qilmasligi uchun
     setTimeout(() => setDraggedHeading(key), 0);
   };
 
@@ -157,8 +159,7 @@ export function HeadingMatchRenderer({ part, answers, onAnswer, submitted, revie
     setDragOver(paraId);
   };
 
-  const handleDragLeave = (e, paraId) => {
-    // Faqat zone dan tashqariga chiqqanda reset qilish
+  const handleDragLeave = (e) => {
     if (e.currentTarget.contains(e.relatedTarget)) return;
     setDragOver(null);
   };
@@ -167,7 +168,6 @@ export function HeadingMatchRenderer({ part, answers, onAnswer, submitted, revie
     e.preventDefault();
     const key = e.dataTransfer.getData('text/plain');
     if (!key) return;
-    // Avvalgi joydan olib tashlash
     const prevId = Object.keys(answers).find(k => answers[k] === key);
     if (prevId && prevId !== questionId) onAnswer(prevId, '');
     onAnswer(questionId, key);
@@ -177,7 +177,8 @@ export function HeadingMatchRenderer({ part, answers, onAnswer, submitted, revie
 
   const handleRemove = (e, questionId) => {
     e.stopPropagation();
-    if (!submitted) onAnswer(questionId, '');
+    const isLocked = reviewMode && !wrongIds.includes(questionId);
+    if (!submitted && !isLocked) onAnswer(questionId, '');
   };
 
   const getHeadingText = (key) => {
@@ -201,33 +202,36 @@ export function HeadingMatchRenderer({ part, answers, onAnswer, submitted, revie
         )}
 
         {paragraphs.map((para) => {
-          const placed  = answers[para.id] || '';
-          const correct = part.answers?.[para.id] || '';
-          let dropClass = 'p3-drop-zone';
-          if (dragOver === para.id)      dropClass += ' drag-over';
-          if (submitted && placed)       dropClass += isCorrect(para.id) ? ' correct' : ' wrong';
+          const placed   = answers[para.id] || '';
+          const correct  = part.answers?.[para.id] || '';
+          const isLocked = reviewMode && !wrongIds.includes(para.id);
+          let dropClass  = 'p3-drop-zone';
+          if (dragOver === para.id) dropClass += ' drag-over';
+          if ((submitted || reviewMode) && placed) {
+            dropClass += isCorrect(para.id) ? ' correct' : ' wrong';
+          }
 
           return (
             <div key={para.id} className="p3-paragraph-block">
               <div
                 className={dropClass}
-                onDragOver={e => handleDragOver(e, para.id)}
-                onDragLeave={e => handleDragLeave(e, para.id)}
-                onDrop={e => handleDrop(e, para.id)}
+                onDragOver={e => !isLocked && handleDragOver(e, para.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={e => !isLocked && handleDrop(e, para.id)}
               >
                 {placed ? (
                   <div
-                    className={`p3-placed-heading ${submitted ? (isCorrect(para.id) ? 'correct' : 'wrong') : ''}`}
-                    draggable={!submitted}
-                    onDragStart={e => handlePlacedDragStart(e, placed)}
+                    className={`p3-placed-heading ${(submitted || reviewMode) ? (isCorrect(para.id) ? 'correct' : 'wrong') : ''}`}
+                    draggable={!submitted && !isLocked}
+                    onDragStart={e => !isLocked && handlePlacedDragStart(e, placed)}
                     onDragEnd={handleDragEnd}
                   >
                     <span className="p3-heading-key">{placed}</span>
                     <span className="p3-heading-txt">{getHeadingText(placed)}</span>
-                    {!submitted && (
+                    {!submitted && !isLocked && (
                       <button className="p3-remove-btn" onClick={e => handleRemove(e, para.id)}>×</button>
                     )}
-                    {submitted && !isCorrect(para.id) && (
+                    {(submitted || reviewMode) && !isCorrect(para.id) && (
                       <span className="p3-correct-hint">✓ {correct}</span>
                     )}
                   </div>
@@ -279,7 +283,7 @@ export function ReadingMCQRenderer({ part, answers, onAnswer, submitted, reviewM
   const subtitle = part.passage_subtitle || '';
   const groups   = part.question_groups  || [{ questions: part.questions || [] }];
 
-  const isCorrect = (qId) => {
+  const isAnswerCorrect = (qId) => {
     const correct = part.answers?.[qId] || '';
     const user    = answers[qId] || '';
     return user.toUpperCase() === correct.toUpperCase();
@@ -288,6 +292,8 @@ export function ReadingMCQRenderer({ part, answers, onAnswer, submitted, reviewM
   const renderQuestion = (q) => {
     const userAnswer = answers[q.id] || '';
     const correct    = part.answers?.[q.id] || '';
+    const isLocked   = reviewMode && !wrongIds.includes(q.id);
+    const isReviewing = submitted || reviewMode;
 
     if (q.type === 'mcq') {
       return (
@@ -298,19 +304,23 @@ export function ReadingMCQRenderer({ part, answers, onAnswer, submitted, reviewM
           </div>
           <div className="p4-options">
             {(q.options || []).map(opt => {
+              const isUserSelected = opt.key.toUpperCase() === userAnswer.toUpperCase();
+              const isCorrectOpt   = opt.key.toUpperCase() === correct.toUpperCase();
               let cls = 'p4-option';
-if (submitted || reviewMode) {
-  if (opt.key.toUpperCase() === correct.toUpperCase()) cls += ' correct';
-  else if (opt.key.toUpperCase() === userAnswer.toUpperCase()) cls += ' wrong';
-} else if (userAnswer.toUpperCase() === opt.key.toUpperCase()) {
-  cls += ' selected';
-}
+              if (isReviewing) {
+                // Faqat user tanlagan optionni rang berish
+                if (isUserSelected && isCorrectOpt)   cls += ' correct';
+                else if (isUserSelected && !isCorrectOpt) cls += ' wrong';
+                // boshqa optionlarga hech narsa (to'g'ri javobni ko'rsatmaymiz)
+              } else if (isUserSelected) {
+                cls += ' selected';
+              }
               return (
                 <button
                   key={opt.key}
                   className={cls}
-onClick={() => !(submitted || (reviewMode && !wrongIds.includes(q.id))) && onAnswer(q.id, opt.key)}
-disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
+                  onClick={() => !submitted && !isLocked && onAnswer(q.id, opt.key)}
+                  disabled={submitted || isLocked}
                 >
                   <span className="p4-opt-key">{opt.key}</span>
                   <span className="p4-opt-text">{opt.text}</span>
@@ -318,7 +328,7 @@ disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
               );
             })}
           </div>
-          {submitted && !isCorrect(q.id) && (
+          {isReviewing && !isAnswerCorrect(q.id) && userAnswer && (
             <div className="p4-correct-hint">✓ Correct answer: {correct}</div>
           )}
         </div>
@@ -343,26 +353,29 @@ disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
               const correctUp = (correct    || '').toUpperCase();
               const optUp     = opt.key.toUpperCase();
               const optLblUp  = opt.label.toUpperCase();
-              const isUserMatch    = userUp    === optUp || userUp    === optLblUp;
+              const isUserMatch    = userUp === optUp || userUp === optLblUp;
               const isCorrectMatch = correctUp === optUp || correctUp === optLblUp;
               let cls = 'p4-tfng-btn';
-if (submitted || reviewMode) {
-  if (isCorrectMatch) cls += ' correct';
-  else if (isUserMatch) cls += ' wrong';
-}
+              if (isReviewing) {
+                // Faqat user tanlagan tugmani rang berish
+                if (isUserMatch && isCorrectMatch)   cls += ' correct';
+                else if (isUserMatch && !isCorrectMatch) cls += ' wrong';
+              } else if (isUserMatch) {
+                cls += ' selected';
+              }
               return (
                 <button
                   key={opt.key}
                   className={cls}
-onClick={() => !(submitted || (reviewMode && !wrongIds.includes(q.id))) && onAnswer(q.id, opt.key)}
-disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
+                  onClick={() => !submitted && !isLocked && onAnswer(q.id, opt.key)}
+                  disabled={submitted || isLocked}
                 >
                   {opt.label}
                 </button>
               );
             })}
           </div>
-          {submitted && !isCorrect(q.id) && (
+          {isReviewing && !isAnswerCorrect(q.id) && userAnswer && (
             <div className="p4-correct-hint">✓ Correct answer: {correct}</div>
           )}
         </div>
@@ -443,11 +456,12 @@ export function ReadingMixedRenderer({ part, answers, onAnswer, submitted, revie
             if (!q) return null;
             const userAnswer    = answers[q.id] || '';
             const correctAnswer = q.correctAnswer || '';
-let cls = 'p5-inline-input';
-const isWrong = wrongIds.includes(q.id);
-if (submitted || reviewMode) {
-  cls += isFITBCorrect(q.id, correctAnswer) ? ' correct' : ' wrong';
-}
+            const isLocked      = reviewMode && !wrongIds.includes(q.id);
+            const isReviewing   = submitted || reviewMode;
+            let cls = 'p5-inline-input';
+            if (isReviewing) {
+              cls += isFITBCorrect(q.id, correctAnswer) ? ' correct' : ' wrong';
+            }
             return (
               <span key={i} className="p5-input-wrap">
                 <span className="p5-q-number">{q.number}</span>
@@ -459,13 +473,13 @@ if (submitted || reviewMode) {
                     const val = e.target.value;
                     if (!val.includes(' ')) onAnswer(q.id, val);
                   }}
-                  disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
+                  disabled={submitted || isLocked}
                   placeholder={`(${q.number})`}
                   maxLength={30}
                 />
-{submitted && !isFITBCorrect(q.id, correctAnswer) && (
-  <span className="p5-correct-hint">{correctAnswer}</span>
-)}
+                {isReviewing && !isFITBCorrect(q.id, correctAnswer) && (
+                  <span className="p5-correct-hint">{correctAnswer}</span>
+                )}
               </span>
             );
           })}
@@ -475,8 +489,11 @@ if (submitted || reviewMode) {
   };
 
   const renderMCQ = (q) => {
-    const userAnswer = answers[q.id] || '';
-    const correct    = part.answers?.[q.id] || '';
+    const userAnswer  = answers[q.id] || '';
+    const correct     = part.answers?.[q.id] || '';
+    const isLocked    = reviewMode && !wrongIds.includes(q.id);
+    const isReviewing = submitted || reviewMode;
+
     return (
       <div key={q.id} className="p5-mcq-block">
         <div className="p5-mcq-q-row">
@@ -485,19 +502,21 @@ if (submitted || reviewMode) {
         </div>
         <div className="p5-mcq-options">
           {(q.options || []).map(opt => {
-let cls = 'p5-mcq-option';
-if (submitted || reviewMode) {
-  if (opt.key.toUpperCase() === correct.toUpperCase()) cls += ' correct';
-  else if (opt.key.toUpperCase() === userAnswer.toUpperCase()) cls += ' wrong';
-} else if (userAnswer.toUpperCase() === opt.key.toUpperCase()) {
-  cls += ' selected';
-}
+            const isUserSelected = opt.key.toUpperCase() === userAnswer.toUpperCase();
+            const isCorrectOpt   = opt.key.toUpperCase() === correct.toUpperCase();
+            let cls = 'p5-mcq-option';
+            if (isReviewing) {
+              if (isUserSelected && isCorrectOpt)   cls += ' correct';
+              else if (isUserSelected && !isCorrectOpt) cls += ' wrong';
+            } else if (isUserSelected) {
+              cls += ' selected';
+            }
             return (
               <button
                 key={opt.key}
                 className={cls}
-onClick={() => !(submitted || (reviewMode && !wrongIds.includes(q.id))) && onAnswer(q.id, opt.key)}
-disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
+                onClick={() => !submitted && !isLocked && onAnswer(q.id, opt.key)}
+                disabled={submitted || isLocked}
               >
                 <span className="p5-opt-key">{opt.key}</span>
                 <span className="p5-opt-text">{opt.text}</span>
@@ -505,9 +524,9 @@ disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
             );
           })}
         </div>
-{submitted && !isMCQCorrect(q.id) && (
-  <div className="p5-mcq-hint">✓ Correct answer: {correct}</div>
-)}
+        {isReviewing && !isMCQCorrect(q.id) && userAnswer && (
+          <div className="p5-mcq-hint">✓ Correct answer: {correct}</div>
+        )}
       </div>
     );
   };
@@ -540,9 +559,7 @@ disabled={submitted || (reviewMode && !wrongIds.includes(q.id))}
 }
 
 // ── LISTENING MCQ RENDERER ──
-// PassageRenderer.jsx oxiriga qo'shing va export qiling
-
-export function ListeningMCQRenderer({ part, answers, onAnswer, submitted, highlights = [], audioTime = 0 }) {
+export function ListeningMCQRenderer({ part, answers, onAnswer, submitted, reviewMode = false, wrongIds = [], highlights = [], audioTime = 0 }) {
   const questions = part.questions || [];
 
   const isCorrect = (qId) => {
@@ -554,53 +571,60 @@ export function ListeningMCQRenderer({ part, answers, onAnswer, submitted, highl
   return (
     <div className="lmcq-layout">
       {questions.map((q) => {
-        const userAnswer = answers[q.id] || '';
-        const correct    = part.answers?.[q.id] || '';
+        const userAnswer  = answers[q.id] || '';
+        const correct     = part.answers?.[q.id] || '';
+        const isLocked    = reviewMode && !wrongIds.includes(q.id);
+        const isReviewing = submitted || reviewMode;
 
-return (
-  <div key={q.id} className={`lmcq-block ${submitted ? (isCorrect(q.id) ? 'ok' : 'err') : ''}`}>
-    {/* Extract label — agar mavjud bo'lsa, blok yuqorisida alohida */}
-    {(() => {
-      const parts = (q.text || '').split('\n\n');
-      const hasExtract = parts.length > 1 && /^Extract\s+(One|Two|Three|Four|Five)/i.test(parts[0].trim());
-      if (!hasExtract) return null;
-      return <div className="lmcq-extract-label">{parts[0].trim()}</div>;
-    })()}
+        return (
+          <div key={q.id} className={`lmcq-block ${isReviewing ? (isCorrect(q.id) ? 'ok' : 'err') : ''}`}>
+            {(() => {
+              const textParts = (q.text || '').split('\n\n');
+              const hasExtract = textParts.length > 1 && /^Extract\s+(One|Two|Three|Four|Five)/i.test(textParts[0].trim());
+              if (!hasExtract) return null;
+              return <div className="lmcq-extract-label">{textParts[0].trim()}</div>;
+            })()}
 
-    {/* Raqam + savol matni — gorizontal, chap tomonda */}
-    <div className="lmcq-q-row">
-      <span className="lmcq-q-num">{q.number}</span>
-      <span className="lmcq-q-text">
-        {(() => {
-          const parts = (q.text || '').split('\n\n');
-          const hasExtract = parts.length > 1 && /^Extract\s+(One|Two|Three|Four|Five)/i.test(parts[0].trim());
-          const actualText = hasExtract ? parts.slice(1).join('\n\n') : q.text;
-          return renderWithHighlights(actualText, highlights);
-        })()}
-      </span>
-    </div>
+            <div className="lmcq-q-row">
+              <span className="lmcq-q-num">{q.number}</span>
+              <span className="lmcq-q-text">
+                {(() => {
+                  const textParts = (q.text || '').split('\n\n');
+                  const hasExtract = textParts.length > 1 && /^Extract\s+(One|Two|Three|Four|Five)/i.test(textParts[0].trim());
+                  const actualText = hasExtract ? textParts.slice(1).join('\n\n') : q.text;
+                  return renderWithHighlights(actualText, highlights);
+                })()}
+              </span>
+            </div>
 
             <div className="lmcq-options">
               {(q.options || []).map(opt => {
+                const isUserSelected = opt.key.toUpperCase() === userAnswer.toUpperCase();
+                const isCorrectOpt   = opt.key.toUpperCase() === correct.toUpperCase();
                 let cls = 'lmcq-option';
-                if (submitted) {
-                  if (opt.key.toUpperCase() === correct.toUpperCase()) cls += ' correct';
-                  else if (opt.key.toUpperCase() === userAnswer.toUpperCase()) cls += ' wrong';
-                } else if (userAnswer.toUpperCase() === opt.key.toUpperCase()) {
+                if (isReviewing) {
+                  if (isUserSelected && isCorrectOpt)   cls += ' correct';
+                  else if (isUserSelected && !isCorrectOpt) cls += ' wrong';
+                } else if (isUserSelected) {
                   cls += ' selected';
                 }
                 return (
-                <button key={opt.key} className={cls}  onClick={() => !submitted && onAnswer(q.id, opt.key)} disabled={submitted}>
-                  <span className="lmcq-opt-key">{opt.key}</span>
-                  <span className="lmcq-opt-text">
-    {renderWithHighlights(opt.text, highlights)}
-  </span>
-</button>
+                  <button
+                    key={opt.key}
+                    className={cls}
+                    onClick={() => !submitted && !isLocked && onAnswer(q.id, opt.key)}
+                    disabled={submitted || isLocked}
+                  >
+                    <span className="lmcq-opt-key">{opt.key}</span>
+                    <span className="lmcq-opt-text">
+                      {renderWithHighlights(opt.text, highlights)}
+                    </span>
+                  </button>
                 );
               })}
             </div>
 
-            {submitted && !isCorrect(q.id) && (
+            {isReviewing && !isCorrect(q.id) && userAnswer && (
               <div className="lmcq-correct-hint">✓ Correct answer: {correct}</div>
             )}
           </div>
@@ -610,17 +634,12 @@ return (
   );
 }
 
-
 // ── LISTENING FITB RENDERER ──
-// ── LISTENING FITB RENDERER ──
-export function ListeningFITBRenderer({ part, answers, onAnswer, submitted, highlights = [] }) {
+export function ListeningFITBRenderer({ part, answers, onAnswer, submitted, reviewMode = false, wrongIds = [], highlights = [] }) {
   const passage = part.passage || [];
   const title   = part.passage_title || '';
 
-  // passage array ni paragraf bloklarga ajratamiz
-  // \n\n → yangi paragraph, \n → <br/>
   const renderTextItem = (content) => {
-    // \n\n bo'yicha paragrafga ajrat
     const paragraphs = content.split('\n\n');
     return paragraphs.map((para, pi) => (
       <React.Fragment key={pi}>
@@ -647,8 +666,10 @@ export function ListeningFITBRenderer({ part, answers, onAnswer, submitted, high
             if (item.type === 'input') {
               const userAnswer    = answers[item.id] || '';
               const correctAnswer = part.answers?.[item.id] || '';
+              const isLocked      = reviewMode && !wrongIds.includes(item.id);
+              const isReviewing   = submitted || reviewMode;
               let inputClass = 'inline-input';
-              if (submitted) {
+              if (isReviewing) {
                 inputClass += userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()
                   ? ' correct' : ' wrong';
               }
@@ -660,11 +681,11 @@ export function ListeningFITBRenderer({ part, answers, onAnswer, submitted, high
                     className={inputClass}
                     value={userAnswer}
                     onChange={e => onAnswer(item.id, e.target.value)}
-                    disabled={submitted}
+                    disabled={submitted || isLocked}
                     placeholder={`(${item.number})`}
                     maxLength={30}
                   />
-                  {submitted && userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
+                  {isReviewing && userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
                     <span className="correct-hint">{correctAnswer}</span>
                   )}
                 </span>
@@ -678,10 +699,8 @@ export function ListeningFITBRenderer({ part, answers, onAnswer, submitted, high
   );
 }
 
-// ── LISTENING MATCHING RENDERER (Part 3 type) ──
-// PassageRenderer.jsx oxiriga qo'shing va export qiling
-
-export function ListeningMatchingRenderer({ part, answers, onAnswer, submitted, highlights = [] }) {
+// ── LISTENING MATCHING RENDERER ──
+export function ListeningMatchingRenderer({ part, answers, onAnswer, submitted, reviewMode = false, wrongIds = [], highlights = [] }) {
   const speakers = part.speakers || [];
   const options  = part.options  || [];
 
@@ -691,7 +710,6 @@ export function ListeningMatchingRenderer({ part, answers, onAnswer, submitted, 
     return user === correct;
   };
 
-  // Har bir option faqat bir marta tanlanishi uchun — allaqachon boshqa speaker tanlagan optionni disable qilish
   const usedKeys = (qId) =>
     speakers
       .filter(s => s.id !== qId && answers[s.id])
@@ -699,7 +717,6 @@ export function ListeningMatchingRenderer({ part, answers, onAnswer, submitted, 
 
   return (
     <div className="lmatch-layout">
-      {/* Options panel — chap */}
       <div className="lmatch-options-panel">
         <div className="lmatch-panel-title">Options</div>
         <div className="lmatch-options-list">
@@ -714,18 +731,22 @@ export function ListeningMatchingRenderer({ part, answers, onAnswer, submitted, 
         </div>
       </div>
 
-      {/* Speakers panel — o'ng */}
       <div className="lmatch-speakers-panel">
         <div className="lmatch-panel-title">Speakers</div>
         <div className="lmatch-speakers-list">
           {speakers.map(sp => {
-            const userAnswer = answers[sp.id] || '';
-            const correct    = part.answers?.[sp.id] || '';
-            const blocked    = usedKeys(sp.id);
+            const userAnswer  = answers[sp.id] || '';
+            const correct     = part.answers?.[sp.id] || '';
+            const blocked     = usedKeys(sp.id);
+            const isLocked    = reviewMode && !wrongIds.includes(sp.id);
+            const isReviewing = submitted || reviewMode;
 
             let selectClass = 'lmatch-select';
-            if (submitted) {
-              selectClass += isCorrect(sp.id) ? ' correct' : ' wrong';
+            if (isReviewing) {
+              const hasAnswer = !!userAnswer;
+              if (hasAnswer) {
+                selectClass += isCorrect(sp.id) ? ' correct' : ' wrong';
+              }
             } else if (userAnswer) {
               selectClass += ' selected';
             }
@@ -733,7 +754,7 @@ export function ListeningMatchingRenderer({ part, answers, onAnswer, submitted, 
             return (
               <div
                 key={sp.id}
-                className={`lmatch-speaker-row ${submitted ? (isCorrect(sp.id) ? 'ok' : 'err') : ''}`}
+                className={`lmatch-speaker-row ${isReviewing ? (isCorrect(sp.id) ? 'ok' : 'err') : ''}`}
               >
                 <div className="lmatch-speaker-left">
                   <span className="lmatch-sp-num">{sp.number}</span>
@@ -744,20 +765,20 @@ export function ListeningMatchingRenderer({ part, answers, onAnswer, submitted, 
                     className={selectClass}
                     value={userAnswer}
                     onChange={e => onAnswer(sp.id, e.target.value)}
-                    disabled={submitted}
+                    disabled={submitted || isLocked}
                   >
                     <option value="">—</option>
                     {options.map(opt => (
                       <option
                         key={opt.key}
                         value={opt.key}
-                        disabled={!submitted && blocked.includes(opt.key.toUpperCase())}
+                        disabled={!submitted && !isLocked && blocked.includes(opt.key.toUpperCase())}
                       >
                         {opt.key} — {opt.text}
                       </option>
                     ))}
                   </select>
-                  {submitted && !isCorrect(sp.id) && (
+                  {isReviewing && userAnswer && !isCorrect(sp.id) && (
                     <span className="lmatch-correct-hint">✓ {correct}</span>
                   )}
                 </div>
@@ -770,14 +791,11 @@ export function ListeningMatchingRenderer({ part, answers, onAnswer, submitted, 
   );
 }
 
-
-// ── LISTENING MAP RENDERER (Part 4 type) ──
-// PassageRenderer.jsx oxiriga qo'shing va export qiling
-
-export function ListeningMapRenderer({ part, answers, onAnswer, submitted, highlights = [] }) {
-  const questions  = part.questions    || [];
-  const options    = part.map_options  || [];
-  const mapImg     = part.map_image_url || '';
+// ── LISTENING MAP RENDERER ──
+export function ListeningMapRenderer({ part, answers, onAnswer, submitted, reviewMode = false, wrongIds = [], highlights = [] }) {
+  const questions = part.questions    || [];
+  const options   = part.map_options  || [];
+  const mapImg    = part.map_image_url || '';
 
   const isCorrect = (qId) => {
     const correct = (part.answers?.[qId] || '').toUpperCase();
@@ -785,7 +803,6 @@ export function ListeningMapRenderer({ part, answers, onAnswer, submitted, highl
     return user === correct;
   };
 
-  // Allaqachon boshqa savol tanlagan optionni disable qilish
   const usedKeys = (qId) =>
     questions
       .filter(q => q.id !== qId && answers[q.id])
@@ -793,16 +810,10 @@ export function ListeningMapRenderer({ part, answers, onAnswer, submitted, highl
 
   return (
     <div className="lmap-layout">
-
-      {/* ── Chap: Xarita rasmi ── */}
       <div className="lmap-image-col">
         <div className="lmap-image-wrap">
           {mapImg ? (
-            <img
-              src={mapImg}
-              alt="Map"
-              className="lmap-img"
-            />
+            <img src={mapImg} alt="Map" className="lmap-img" />
           ) : (
             <div className="lmap-img-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
@@ -815,18 +826,22 @@ export function ListeningMapRenderer({ part, answers, onAnswer, submitted, highl
         </div>
       </div>
 
-      {/* ── O'ng: Savollar ── */}
       <div className="lmap-questions-col">
         <div className="lmap-panel-title">Label the map</div>
         <div className="lmap-questions-list">
           {questions.map(q => {
-            const userAnswer = answers[q.id] || '';
-            const correct    = part.answers?.[q.id] || '';
-            const blocked    = usedKeys(q.id);
+            const userAnswer  = answers[q.id] || '';
+            const correct     = part.answers?.[q.id] || '';
+            const blocked     = usedKeys(q.id);
+            const isLocked    = reviewMode && !wrongIds.includes(q.id);
+            const isReviewing = submitted || reviewMode;
 
             let selectClass = 'lmap-select';
-            if (submitted) {
-              selectClass += isCorrect(q.id) ? ' correct' : ' wrong';
+            if (isReviewing) {
+              const hasAnswer = !!userAnswer;
+              if (hasAnswer) {
+                selectClass += isCorrect(q.id) ? ' correct' : ' wrong';
+              }
             } else if (userAnswer) {
               selectClass += ' selected';
             }
@@ -834,7 +849,7 @@ export function ListeningMapRenderer({ part, answers, onAnswer, submitted, highl
             return (
               <div
                 key={q.id}
-                className={`lmap-question-row ${submitted ? (isCorrect(q.id) ? 'ok' : 'err') : ''}`}
+                className={`lmap-question-row ${isReviewing ? (isCorrect(q.id) ? 'ok' : 'err') : ''}`}
               >
                 <div className="lmap-q-left">
                   <span className="lmap-q-num">{q.number}</span>
@@ -847,20 +862,20 @@ export function ListeningMapRenderer({ part, answers, onAnswer, submitted, highl
                     className={selectClass}
                     value={userAnswer}
                     onChange={e => onAnswer(q.id, e.target.value)}
-                    disabled={submitted}
+                    disabled={submitted || isLocked}
                   >
                     <option value="">—</option>
                     {options.map(opt => (
                       <option
                         key={opt.key}
                         value={opt.key}
-                        disabled={!submitted && blocked.includes(opt.key.toUpperCase())}
+                        disabled={!submitted && !isLocked && blocked.includes(opt.key.toUpperCase())}
                       >
                         {opt.key}
                       </option>
                     ))}
                   </select>
-                  {submitted && !isCorrect(q.id) && (
+                  {isReviewing && userAnswer && !isCorrect(q.id) && (
                     <span className="lmap-correct-hint">✓ {correct}</span>
                   )}
                 </div>
@@ -869,7 +884,6 @@ export function ListeningMapRenderer({ part, answers, onAnswer, submitted, highl
           })}
         </div>
       </div>
-
     </div>
   );
 }
