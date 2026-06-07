@@ -249,47 +249,47 @@ function ExplAudioPlayer({ audioUrl, startTime = 0, endTime = null }) {
 }
 
 // ── Recovery Banner ──
-function RecoveryBanner({ wrongCount, onStartRecovery, loading }) {
-  if (wrongCount === 0) return null;
-  return (
-    <div className="rp-recovery-banner">
-      <div className="rp-recovery-banner-left">
-        <div className="rp-recovery-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
-            <path d="M4.93 4.93L19.07 19.07"/>
-          </svg>
-        </div>
-        <div>
-          <div className="rp-recovery-title">
-            <strong>{wrongCount}</strong> ta noto'g'ri javob topildi
-          </div>
-          <div className="rp-recovery-sub">
-            Recovery rejimida faqat shu savollarni qayta ishlang
-          </div>
-        </div>
-      </div>
-      <button
-        className="rp-recovery-start-btn"
-        onClick={onStartRecovery}
-        disabled={loading}
-      >
-        {loading ? (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="rp-spin">
-            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3"/>
-            <path d="M21 12a9 9 0 00-9-9"/>
-          </svg>
-        ) : (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="1 4 1 10 7 10"/>
-            <path d="M3.51 15a9 9 0 1 0 .49-3"/>
-          </svg>
-        )}
-        {loading ? 'Yaratilmoqda...' : 'Recovery boshlash'}
-      </button>
-    </div>
-  );
-}
+// function RecoveryBanner({ wrongCount, onStartRecovery, loading }) {
+//   if (wrongCount === 0) return null;
+//   return (
+//     <div className="rp-recovery-banner">
+//       <div className="rp-recovery-banner-left">
+//         <div className="rp-recovery-icon">
+//           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+//             <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
+//             <path d="M4.93 4.93L19.07 19.07"/>
+//           </svg>
+//         </div>
+//         <div>
+//           <div className="rp-recovery-title">
+//             <strong>{wrongCount}</strong> ta noto'g'ri javob topildi
+//           </div>
+//           <div className="rp-recovery-sub">
+//             Recovery rejimida faqat shu savollarni qayta ishlang
+//           </div>
+//         </div>
+//       </div>
+//       <button
+//         className="rp-recovery-start-btn"
+//         onClick={onStartRecovery}
+//         disabled={loading}
+//       >
+//         {loading ? (
+//           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="rp-spin">
+//             <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3"/>
+//             <path d="M21 12a9 9 0 00-9-9"/>
+//           </svg>
+//         ) : (
+//           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+//             <polyline points="1 4 1 10 7 10"/>
+//             <path d="M3.51 15a9 9 0 1 0 .49-3"/>
+//           </svg>
+//         )}
+//         {loading ? 'Yaratilmoqda...' : 'Recovery boshlash'}
+//       </button>
+//     </div>
+//   );
+// }
 
 // ─────────────────────────────────────────────
 // MAIN COMPONENT
@@ -336,51 +336,51 @@ export default function ResultPanel({
   const cefr = isFullMock ? getCEFR(score) : null;
 
   // ── Recovery session yaratish ──
-  const handleStartRecovery = async () => {
-    if (!testId || !attemptId) {
-      setRecoveryError('Test yoki attempt ID topilmadi');
-      return;
-    }
-    setRecoveryLoading(true);
-    setRecoveryError('');
-    try {
-      const token = localStorage.getItem('cp_token');
-      const wrongIds = wrongResults.map(r => r.id);
+  // const handleStartRecovery = async () => {
+  //   if (!testId || !attemptId) {
+  //     setRecoveryError('Test yoki attempt ID topilmadi');
+  //     return;
+  //   }
+  //   setRecoveryLoading(true);frecoveryLoading
+  //   setRecoveryError('');
+  //   try {
+  //     const token = localStorage.getItem('cp_token');
+  //     const wrongIds = wrongResults.map(r => r.id);
 
-      const res = await fetch(`${API_URL}/recovery/sessions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          test_id:       testId,
-          attempt_id:    attemptId,
-          wrong_ids:     wrongIds,
-          is_listening:  isListening || false,
-        }),
-      });
+  //     const res = await fetch(`${API_URL}/recovery/sessions`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  //       },
+  //       body: JSON.stringify({
+  //         test_id:       testId,
+  //         attempt_id:    attemptId,
+  //         wrong_ids:     wrongIds,
+  //         is_listening:  isListening || false,
+  //       }),
+  //     });
 
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.detail || 'Recovery session yaratishda xato');
-      }
+  //     if (!res.ok) {
+  //       const d = await res.json();
+  //       throw new Error(d.detail || 'Recovery session yaratishda xato');
+  //     }
 
-      const data = await res.json();
-      setRecoveryDone(true);
+  //     const data = await res.json();
+  //     setRecoveryDone(true);
 
-      // Recovery testga o'tish
-      setTimeout(() => {
-        const base = isListening ? '/listening' : '/test';
-        window.location.href = `${base}/${testId}?recovery=${data.id}&token=${token}`;
-      }, 800);
+  //     // Recovery testga o'tish
+  //     setTimeout(() => {
+  //       const base = isListening ? '/listening' : '/test';
+  //       window.location.href = `${base}/${testId}?recovery=${data.id}&token=${token}`;
+  //     }, 800);
 
-    } catch (err) {
-      setRecoveryError(err.message);
-    } finally {
-      setRecoveryLoading(false);
-    }
-  };
+  //   } catch (err) {
+  //     setRecoveryError(err.message);
+  //   } finally {
+  //     setRecoveryLoading(false);
+  //   }
+  // };
 
   // ── Feedback ──
   const handleFeedback = async () => {
@@ -483,7 +483,7 @@ export default function ResultPanel({
       </div>
 
       {/* ── RECOVERY BANNER (faqat oddiy test natijasida, wrong bo'lsa) ── */}
-      {!recoveryMode && wrongResults.length > 0 && (
+      {/* {!recoveryMode && wrongResults.length > 0 && (
         <div style={{ padding: '12px 32px 0' }}>
           <RecoveryBanner
             wrongCount={wrongResults.length}
@@ -501,10 +501,10 @@ export default function ResultPanel({
             </p>
           )}
         </div>
-      )}
+      )} */}
 
       {/* ── RECOVERY COMPLETE BANNER ── */}
-      {recoveryMode && wrongResults.length === 0 && (
+      {/* {recoveryMode && wrongResults.length === 0 && (
         <div className="rp-recovery-complete">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0f6e56" strokeWidth="2.5">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -515,7 +515,7 @@ export default function ResultPanel({
             <div className="rp-recovery-complete-sub">Barcha recovery savollarini to'g'ri javobladingiz</div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* ── ANSWER SHEET ── */}
       <div className="rp-sheet-section">

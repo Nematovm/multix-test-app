@@ -599,46 +599,56 @@ function getWrongIds(parts, userAnswers) {
 }
 
 // 7. handleRetry funksiyasini qo'shing (handleSubmit dan keyin):
+// handleRetry ni to'liq almashtiring:
 const handleRetry = useCallback(() => {
-  // Faqat xato savollarni tozalash, to'g'rilarini saqlash
+  // Xato savollar javoblarini tozalash, to'g'rilarini saqlash
   setAnswers(prev => {
     const next = { ...prev };
-    wrongIds.forEach(id => { next[id] = ''; });
+    wrongIds.forEach(id => { delete next[id]; });
     return next;
   });
   setReviewMode(false);
-  // Birinchi partga o'tish
-  setCurrentPart(0);
-}, [wrongIds]);
+  // Birinchi xato partga o'tish
+  const firstWrongPart = testData.parts.findIndex(p => {
+    const keys = getPartAnswerKeys(p);
+    return keys.some(k => wrongIds.includes(k));
+  });
+  setCurrentPart(firstWrongPart !== -1 ? firstWrongPart : 0);
+}, [wrongIds, testData]);
 
 // 3. handleSubmit ni to'liq almashtiring:
+// handleSubmit ni to'liq almashtiring:
 const handleSubmit = useCallback(async (currentAnswers) => {
   const finalAnswers = currentAnswers || answers;
   if (!testData) return;
+
+  const currentWrongIds = getWrongIds(testData.parts, finalAnswers);
+
+  // Recovery enabled va urinishlar qolgan va xatolar bor
+  if (recoveryEnabled && triesLeft > 1 && currentWrongIds.length > 0) {
+    setAnswers(finalAnswers);
+    setWrongIds(currentWrongIds);
+    setReviewMode(true);
+    setTriesLeft(t => t - 1);
+    // Birinchi xato partga o'tish
+    const firstWrongPart = testData.parts.findIndex(p => {
+      const keys = getPartAnswerKeys(p);
+      return keys.some(k => currentWrongIds.includes(k));
+    });
+    if (firstWrongPart !== -1) setCurrentPart(firstWrongPart);
+    return; // <-- result pagega O'TMASIN
+  }
+
+  // Oxirgi urinish yoki xato yo'q yoki recovery off
+  setSubmitted(true);
+  setAnswers(finalAnswers);
 
   const { correct, total } = calcScore(testData.parts, finalAnswers);
   const percent   = total > 0 ? Math.round((correct / total) * 100 * 10) / 10 : 0;
   const timeSpent = startTime ? Math.round((Date.now() - startTime) / 1000) : null;
   const token     = localStorage.getItem('cp_token');
-
-  // Xato savol ID larini aniqlash
-  const currentWrongIds = getWrongIds(testData.parts, finalAnswers);
-
-  if (recoveryEnabled && triesLeft > 1 && currentWrongIds.length > 0) {
-    // Recovery mode: sahifada qol, xato/to'g'rini ko'rsat
-    setAnswers(finalAnswers);
-    setWrongIds(currentWrongIds);
-    setReviewMode(true);
-    setTriesLeft(t => t - 1);
-    // Attempt saqlamaymiz — faqat oxirgi submitda saqlaymiz
-    return;
-  }
-
-  // Oxirgi urinish yoki hammasi to'g'ri yoki recovery yoq
-  setSubmitted(true);
-  setAnswers(finalAnswers);
-
   if (!token) return;
+
   try {
     const res = await fetch(`${API_BASE}/attempts`, {
       method: 'POST',
@@ -700,7 +710,11 @@ const handleSubmit = useCallback(async (currentAnswers) => {
   const formatTime = (s) =>
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
-  const handleAnswer = (qid, val) => setAnswers(p => ({ ...p, [qid]: val }));
+const handleAnswer = (qid, val) => {
+  // reviewMode da faqat xato savollarga javob berish mumkin
+  if (reviewMode && !wrongIds.includes(qid)) return;
+  setAnswers(p => ({ ...p, [qid]: val }));
+};
 
   const getPartAnswerKeys = (p) => {
     if (p.type === 'matching')      return (p.questions  || []).map(q => q.id);
@@ -784,16 +798,30 @@ const handleSubmit = useCallback(async (currentAnswers) => {
   </div>
 )}
 
-          {!started ? (
-            <button className="tp-btn-start" onClick={handleStartTest}>
-              Start Test
-            </button>
-) : reviewMode && !submitted ? (
-  <button className="tp-btn-retry" onClick={handleRetry}>
-    Retry ({triesLeft} urinish qoldi)
+{/* Header o'ng tomoni — tugmalar */}
+{!started ? (
+  <button className="tp-btn-start" onClick={handleStartTest}>
+    Start Test
   </button>
-) : !submitted && !reviewMode ? (
-  <button className="tp-btn-submit" onClick={() => handleSubmit(answers)}>Submit</button>
+) : reviewMode ? (
+  <>
+    <div className="tp-tries-badge">
+      {triesLeft} urinish qoldi
+    </div>
+    <button className="tp-btn-retry" onClick={handleRetry}>
+      Retry
+    </button>
+    {/* Oxirgi urinishda Submit tugmasi ham ko'rinsin */}
+    {triesLeft === 1 && (
+      <button className="tp-btn-submit" onClick={() => handleSubmit(answers)}>
+        Submit Final
+      </button>
+    )}
+  </>
+) : !submitted ? (
+  <button className="tp-btn-submit" onClick={() => handleSubmit(answers)}>
+    Submit
+  </button>
 ) : null}
 
           {!submitted && (
@@ -870,17 +898,23 @@ const handleSubmit = useCallback(async (currentAnswers) => {
 
     <main className="tp-main" onMouseUp={handleMouseUp} ref={passageRef}>
       {/* reviewMode banneri */}
-      {reviewMode && (
-        <div className="tp-review-banner">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          Yashil — to'g'ri, qizil — xato. Xatolaringizni to'g'irlang va Retry bosing.
-          <strong style={{ marginLeft: 8, color: '#dc2626' }}>{wrongIds.length} ta xato</strong>
-        </div>
-      )}
+{reviewMode && (
+  <div className="tp-review-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" 
+         stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <span>
+      <strong style={{ color: '#0f6e56' }}>Yashil</strong> — to'g'ri (o'zgartirib bo'lmaydi) &nbsp;|&nbsp;
+      <strong style={{ color: '#dc2626' }}>Qizil</strong> — xato (to'g'irlang)
+    </span>
+    <strong style={{ marginLeft: 'auto', color: '#dc2626' }}>
+      {wrongIds.length} ta xato
+    </strong>
+  </div>
+)}
             <div className="tp-part-header">
               <div className="tp-part-badge">
                 {isListening && '🎧 '}Part {part.part_number}
